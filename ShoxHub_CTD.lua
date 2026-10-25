@@ -1,4 +1,4 @@
--- Shox Hub | Cameraman TD Macro Recorder + Beat-Intro | v7.13
+-- Shox Hub | Cameraman TD Macro Recorder + Beat-Intro | v7.14
 pcall(function() getgenv().ShoxOff() end)
 local HS,UIS,TS,RS=game:GetService("HttpService"),game:GetService("UserInputService"),game:GetService("TweenService"),game:GetService("RunService")
 local lp=game:GetService("Players").LocalPlayer
@@ -20,7 +20,7 @@ local USE={TowerUpgrade=true,TowerSell=true}
 local NEAR=12
 local GP="^%x+%-%x+%-%x+%-%x+%-%x+$"
 local RUNS,SCALES,SNAME,TRANS={0},{0.85,1,1.2},{"S","M","L"},{0,0.2,0.4} -- RUNS={0}: immer Endless
-local cfg={theme="Black",runs=1,scale=2,trans=1,intro=true,lag=false,slot=1,ap=false,names={},st={runs=0,time=0}}
+local cfg={theme="Black",runs=1,scale=2,trans=1,intro=true,lag=false,slot=1,ap=false,dev=false,names={},st={runs=0,time=0}}
 do
   local ok,j=pcall(function() return HS:JSONDecode(readfile(DIR.."/settings.json")) end)
   if ok and type(j)=="table" then for k,v in pairs(j) do cfg[k]=v end end
@@ -32,6 +32,7 @@ do
   cfg.intro=cfg.intro~=false
   cfg.lag=cfg.lag==true
   cfg.ap=cfg.ap==true
+  cfg.dev=cfg.dev==true
   cfg.auto=nil
   cfg.runs=1
   if type(cfg.names)~="table" then cfg.names={} end
@@ -381,7 +382,13 @@ mk("UICorner",{CornerRadius=UDim.new(0,9)},nBox)
 mk("UIPadding",{PaddingLeft=UDim.new(0,8),PaddingRight=UDim.new(0,8)},nBox)
 reg(nBox,"BackgroundColor3",fBtn) reg(nBox,"TextColor3",fBtxt) reg(nBox,"PlaceholderColor3",fSub)
 local function showName() nBox.Text=sname(slot) end
-local bCopy=btn(row(28),"Copy Log",1,1,function(t) return t.acc:Lerp(t.bg,0.4) end,fCtxt,12)
+-- Copy Log: versteckt; 10 schnelle Taps auf den Header (Shox Hub) schalten ihn um (wird gespeichert)
+local cRow=row(28)
+local bCopy=btn(cRow,"Copy Log",1,1,function(t) return t.acc:Lerp(t.bg,0.4) end,fCtxt,12)
+local function showCopy()
+  cRow.Visible=cfg.dev
+  cRow.Size=UDim2.new(1,0,0,cfg.dev and 28 or 0)
+end
 local dRow=row(28)
 local bDelCur=btn(dRow,"Delete Current",1,2,fDel,fCtxt,12)
 local bDelSlot=btn(dRow,"Delete Slot",2,2,fDel,fCtxt,12)
@@ -449,6 +456,7 @@ end
 
 -- Drag + Minimize
 local dIn,dStart,dPos,dLast,dBase
+local tapN,tapLast,tapT=0,0,0
 -- AbsolutePosition rechnet ohne die Roblox-Leiste oben (GuiInset): Fenster darf bis zum echten Bildschirmrand hoch
 local GS=game:GetService("GuiService")
 local function bnd()
@@ -470,7 +478,7 @@ local function clampMain()
   end)
 end
 on(dragH.InputBegan,function(i)
-  if isIn(i) then dIn,dStart,dPos,dLast,dBase=i,i.Position,main.AbsolutePosition,i.Position,main.Position end
+  if isIn(i) then dIn,dStart,dPos,dLast,dBase=i,i.Position,main.AbsolutePosition,i.Position,main.Position tapT=os.clock() end
 end)
 on(UIS.InputChanged,function(i)
   if not dIn then return end
@@ -491,6 +499,17 @@ on(UIS.InputEnded,function(i)
     dIn=nil
     local p=main.Position
     cfg.pos={p.X.Scale,p.X.Offset,p.Y.Scale,p.Y.Offset}
+    -- 10 schnelle Taps (kaum Bewegung, kurz gedrueckt) auf den Header: Copy Log ein/aus
+    if (i.Position-dStart).Magnitude<12 and os.clock()-tapT<0.6 then
+      if os.clock()-tapLast>1.5 then tapN=0 end
+      tapLast=os.clock()
+      tapN+=1
+      if tapN>=10 then
+        tapN=0
+        cfg.dev=not cfg.dev
+        showCopy()
+      end
+    end
     saveCfg()
   end
 end)
@@ -706,8 +725,13 @@ local function introFx(snd)
   local line=mk("Frame",{AnchorPoint=Vector2.new(.5,.5),Position=UDim2.new(.5,0,.5,52),Size=UDim2.fromOffset(0,4),BackgroundColor3=T.acc,BorderSizePixel=0},stage)
   local sub=mk("TextLabel",{AnchorPoint=Vector2.new(.5,.5),Position=UDim2.new(.5,0,.5,80),Size=UDim2.fromOffset(376,22),BackgroundTransparency=1,Text=DISCORD,Font=Enum.Font.GothamBold,TextSize=17,TextColor3=T.sub,TextTransparency=1},stage)
   local fl=mk("Frame",{Size=UDim2.fromScale(1,1),BackgroundColor3=T.acc,BackgroundTransparency=1,BorderSizePixel=0,ZIndex=5},ig)
-  local hint=mk("TextLabel",{AnchorPoint=Vector2.new(.5,1),Position=UDim2.new(.5,0,1,-10),Size=UDim2.fromOffset(300,16),BackgroundTransparency=1,Text="tap to skip",Font=Enum.Font.Gotham,TextSize=11,TextColor3=T.sub,TextTransparency=0.55,ZIndex=6},ig)
-  local skip=mk("TextButton",{Size=UDim2.fromScale(1,1),BackgroundTransparency=1,Text="",ZIndex=10},ig)
+  -- Skip-Button oben rechts (Theme-Look wie die Buttons im Hub)
+  local skip=mk("TextButton",{AnchorPoint=Vector2.new(1,0),Position=UDim2.new(1,-14,0,14),Size=UDim2.fromOffset(78,32),BackgroundColor3=T.btn,Text="Skip",TextColor3=T.btxt,Font=Enum.Font.GothamBold,TextSize=14,AutoButtonColor=false,BorderSizePixel=0,ZIndex=10},ig)
+  mk("UICorner",{CornerRadius=UDim.new(0,9)},skip)
+  local skS=mk("UIStroke",{Color=T.acc,Thickness=1,Transparency=0.55,ApplyStrokeMode=Enum.ApplyStrokeMode.Border},skip)
+  local skU=mk("UIScale",{Scale=1},skip)
+  on(skip.InputBegan,function(x) if isIn(x) then tw(skU,{Scale=0.93},.08) end end)
+  on(skip.InputEnded,function(x) if isIn(x) then tw(skU,{Scale=1},.3,Enum.EasingStyle.Back) end end)
   local function spark(n,wide)
     for _=1,n do
       local a=math.random()*math.pi*2
@@ -789,7 +813,9 @@ local function introFx(snd)
     line.BackgroundTransparency=f
     if tl>=3.15 then subA=math.min(1,subA+dt*5) end
     sub.TextTransparency=math.max(1-subA,f)
-    hint.TextTransparency=math.max(0.55,f)
+    skip.BackgroundTransparency=f
+    skip.TextTransparency=f
+    skS.Transparency=math.max(0.55,f)
     if tl>=FADE1 then finish(false) end
   end)
 end
@@ -1319,6 +1345,7 @@ for n=1,5 do
   filled[n]=ok and r==true
 end
 applyTheme(TM[cfg.theme] and cfg.theme or "Black",true)
+showCopy()
 tw(main,{Size=UDim2.fromOffset(220,WIN_H),BackgroundTransparency=TRANS[cfg.trans]},.7,Enum.EasingStyle.Back)
 task.delay(0.9,clampMain)
 statsTxt()
