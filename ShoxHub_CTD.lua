@@ -1,4 +1,4 @@
--- Shox Hub | Cameraman TD Macro Recorder + Beat-Intro | v7.10
+-- Shox Hub | Cameraman TD Macro Recorder + Beat-Intro | v7.11
 pcall(function() getgenv().ShoxOff() end)
 local HS,UIS,TS,RS=game:GetService("HttpService"),game:GetService("UserInputService"),game:GetService("TweenService"),game:GetService("RunService")
 local lp=game:GetService("Players").LocalPlayer
@@ -449,12 +449,19 @@ end
 
 -- Drag + Minimize
 local dIn,dStart,dPos,dLast,dBase
+-- Grenzen im GUI-Koordinatenraum: liegt dessen Ursprung unter der Roblox-Leiste (Inset), darf das Fenster bis zum echten Bildschirmrand hoch
+local function bnd()
+  local v=workspace.CurrentCamera.ViewportSize
+  local g=gui.AbsoluteSize
+  local top=g.Y>0 and math.clamp(v.Y-g.Y,0,100) or 0
+  return v,-top,(g.Y>0 and g.Y or v.Y)-40
+end
 local function clampMain()
   pcall(function()
-    local v=workspace.CurrentCamera.ViewportSize
+    local v,minY,maxY=bnd()
     local sz,ap=main.AbsoluteSize,main.AbsolutePosition
     local x=math.clamp(ap.X,-sz.X+90,v.X-90)
-    local y=math.clamp(ap.Y,0,v.Y-40)
+    local y=math.clamp(ap.Y,minY,maxY)
     if x~=ap.X or y~=ap.Y then main.Position=UDim2.fromOffset(x,y) end
   end)
 end
@@ -469,10 +476,10 @@ on(UIS.InputChanged,function(i)
   if not ok then return end
   dLast=i.Position
   local d=i.Position-dStart
-  local v=workspace.CurrentCamera.ViewportSize
+  local v,minY,maxY=bnd()
   local sz=main.AbsoluteSize
   local dx=math.clamp(dPos.X+d.X,-sz.X+90,v.X-90)-dPos.X
-  local dy=math.clamp(dPos.Y+d.Y,0,v.Y-40)-dPos.Y
+  local dy=math.clamp(dPos.Y+d.Y,minY,maxY)-dPos.Y
   main.Position=UDim2.new(dBase.X.Scale,dBase.X.Offset+dx,dBase.Y.Scale,dBase.Y.Offset+dy)
 end)
 on(UIS.InputEnded,function(i)
