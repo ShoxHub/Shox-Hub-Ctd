@@ -1,4 +1,4 @@
--- Shox Hub | Cameraman TD Macro Recorder + Beat-Intro | v7.8
+-- Shox Hub | Cameraman TD Macro Recorder + Beat-Intro | v7.9
 pcall(function() getgenv().ShoxOff() end)
 local HS,UIS,TS,RS=game:GetService("HttpService"),game:GetService("UserInputService"),game:GetService("TweenService"),game:GetService("RunService")
 local lp=game:GetService("Players").LocalPlayer
@@ -9,8 +9,9 @@ local MDIR=DIR.."/music" -- Intro-Datei (.mp3/.ogg) hier oder direkt in ShoxHub/
 pcall(makefolder,DIR)
 pcall(makefolder,MDIR)
 -- Intro-Song wird beim ersten Start automatisch geladen und in ShoxHub/music/ gespeichert (nur einmal, danach lokal).
--- Direktlink zur Intro-Datei (.mp3/.ogg) hier eintragen, z.B. catbox.moe oder GitHub raw. Leer = nur lokale Datei.
-local INTRO_URL="https://files.catbox.moe/j5p4sg.ogg"
+-- INTRO_URL: GitHub raw (intro.ogg im Repo-Root). INTRO_URL2: Reserve (catbox liefert in Delta teils leere Antworten).
+local INTRO_URL="https://raw.githubusercontent.com/ShoxHub/Shox-Hub-Ctd/main/intro.ogg"
+local INTRO_URL2="https://files.catbox.moe/j5p4sg.ogg"
 local IGNORE={} -- nie aufnehmen: IGNORE["RemoteName"]=true
 local SKIPB={"towerui","slots","jumpbutton"} -- beim Abspielen ueberspringen
 local DEDUP=0.05
@@ -803,6 +804,7 @@ local function playIntro()
 end
 
 -- Auto-Download des Intro-Songs (findIntro/introFx/playIntro bleiben unveraendert)
+-- Probiert INTRO_URL (GitHub raw), danach INTRO_URL2 (Reserve). Jede Antwort wird per Dateikopf (OggS/ID3/MP3) geprueft.
 local idbg={}
 local function ilog(s) idbg[#idbg+1]=os.date("%H:%M:%S").." "..s end
 local function audioExt(b)
@@ -831,12 +833,18 @@ local function dlData(url)
 end
 local function ensureIntro()
   if not cfg.intro then return end
-  if INTRO_URL=="" then ilog("INTRO_URL empty") return end
   if not (writefile and listfiles and getcustomasset) then ilog("executor lacks writefile/listfiles/getcustomasset") return end
   local f=findIntro()
   if f then ilog("intro file exists: "..tostring(f)) return end
   st("Intro: downloading...")
-  local data,ext=dlData(INTRO_URL)
+  local data,ext
+  for n,u in ipairs({INTRO_URL,INTRO_URL2}) do
+    if u~="" then
+      ilog("try url"..n..": "..u)
+      data,ext=dlData(u)
+      if data then ilog("url"..n.." ok, len="..#data) break end
+    end
+  end
   if not data then st("Intro: download failed (Copy Log)") ilog("download failed") return end
   local p=MDIR.."/intro."..ext
   local okw,e=pcall(writefile,p,data)
