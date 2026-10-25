@@ -1,4 +1,4 @@
--- Shox Hub | Cameraman TD Macro Recorder + Beat-Intro | v7.9
+-- Shox Hub | Cameraman TD Macro Recorder + Beat-Intro | v7.10
 pcall(function() getgenv().ShoxOff() end)
 local HS,UIS,TS,RS=game:GetService("HttpService"),game:GetService("UserInputService"),game:GetService("TweenService"),game:GetService("RunService")
 local lp=game:GetService("Players").LocalPlayer
@@ -448,7 +448,7 @@ local function optTxt()
 end
 
 -- Drag + Minimize
-local dIn,dStart,dPos,dLast
+local dIn,dStart,dPos,dLast,dBase
 local function clampMain()
   pcall(function()
     local v=workspace.CurrentCamera.ViewportSize
@@ -459,10 +459,11 @@ local function clampMain()
   end)
 end
 on(dragH.InputBegan,function(i)
-  if isIn(i) then dIn,dStart,dPos,dLast=i,i.Position,main.AbsolutePosition,i.Position end
+  if isIn(i) then dIn,dStart,dPos,dLast,dBase=i,i.Position,main.AbsolutePosition,i.Position,main.Position end
 end)
 on(UIS.InputChanged,function(i)
   if not dIn then return end
+  if dIn.UserInputState==Enum.UserInputState.End or dIn.UserInputState==Enum.UserInputState.Cancel then dIn=nil return end -- haengende Eingabe (verpasstes Ende) verwerfen
   local ok=i==dIn or i.UserInputType==Enum.UserInputType.MouseMovement
   if not ok and i.UserInputType==Enum.UserInputType.Touch and dIn.UserInputType==Enum.UserInputType.Touch and (i.Position-dLast).Magnitude<120 then ok=true end
   if not ok then return end
@@ -470,7 +471,9 @@ on(UIS.InputChanged,function(i)
   local d=i.Position-dStart
   local v=workspace.CurrentCamera.ViewportSize
   local sz=main.AbsoluteSize
-  main.Position=UDim2.fromOffset(math.clamp(dPos.X+d.X,-sz.X+90,v.X-90),math.clamp(dPos.Y+d.Y,0,v.Y-40))
+  local dx=math.clamp(dPos.X+d.X,-sz.X+90,v.X-90)-dPos.X
+  local dy=math.clamp(dPos.Y+d.Y,0,v.Y-40)-dPos.Y
+  main.Position=UDim2.new(dBase.X.Scale,dBase.X.Offset+dx,dBase.Y.Scale,dBase.Y.Offset+dy)
 end)
 on(UIS.InputEnded,function(i)
   if dIn and isIn(i) and (i==dIn or i.UserInputType==dIn.UserInputType) then
