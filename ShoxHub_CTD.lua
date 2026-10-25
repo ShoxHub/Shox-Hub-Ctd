@@ -1,4 +1,4 @@
--- Shox Hub | Cameraman TD Macro Recorder + Beat-Intro | v7.11
+-- Shox Hub | Cameraman TD Macro Recorder + Beat-Intro | v7.13
 pcall(function() getgenv().ShoxOff() end)
 local HS,UIS,TS,RS=game:GetService("HttpService"),game:GetService("UserInputService"),game:GetService("TweenService"),game:GetService("RunService")
 local lp=game:GetService("Players").LocalPlayer
@@ -449,12 +449,13 @@ end
 
 -- Drag + Minimize
 local dIn,dStart,dPos,dLast,dBase
--- Grenzen im GUI-Koordinatenraum: liegt dessen Ursprung unter der Roblox-Leiste (Inset), darf das Fenster bis zum echten Bildschirmrand hoch
+-- AbsolutePosition rechnet ohne die Roblox-Leiste oben (GuiInset): Fenster darf bis zum echten Bildschirmrand hoch
+local GS=game:GetService("GuiService")
 local function bnd()
   local v=workspace.CurrentCamera.ViewportSize
-  local g=gui.AbsoluteSize
-  local top=g.Y>0 and math.clamp(v.Y-g.Y,0,100) or 0
-  return v,-top,(g.Y>0 and g.Y or v.Y)-40
+  local ok,ti=pcall(function() return GS:GetGuiInset() end)
+  local ins=ok and typeof(ti)=="Vector2" and math.clamp(ti.Y,0,100) or 0
+  return v,-ins,v.Y-ins-40
 end
 local function clampMain()
   pcall(function()
@@ -462,7 +463,10 @@ local function clampMain()
     local sz,ap=main.AbsoluteSize,main.AbsolutePosition
     local x=math.clamp(ap.X,-sz.X+90,v.X-90)
     local y=math.clamp(ap.Y,minY,maxY)
-    if x~=ap.X or y~=ap.Y then main.Position=UDim2.fromOffset(x,y) end
+    if x~=ap.X or y~=ap.Y then
+      local p=main.Position
+      main.Position=UDim2.new(p.X.Scale,p.X.Offset+(x-ap.X),p.Y.Scale,p.Y.Offset+(y-ap.Y))
+    end
   end)
 end
 on(dragH.InputBegan,function(i)
