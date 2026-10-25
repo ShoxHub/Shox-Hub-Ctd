@@ -1,4 +1,4 @@
--- Shox Hub | Cameraman TD Macro Recorder + Beat-Intro | v7.7
+-- Shox Hub | Cameraman TD Macro Recorder + Beat-Intro | v7.8
 pcall(function() getgenv().ShoxOff() end)
 local HS,UIS,TS,RS=game:GetService("HttpService"),game:GetService("UserInputService"),game:GetService("TweenService"),game:GetService("RunService")
 local lp=game:GetService("Players").LocalPlayer
@@ -803,27 +803,48 @@ local function playIntro()
 end
 
 -- Auto-Download des Intro-Songs (findIntro/introFx/playIntro bleiben unveraendert)
+local idbg={}
+local function ilog(s) idbg[#idbg+1]=os.date("%H:%M:%S").." "..s end
+local function audioExt(b)
+  if type(b)~="string" or #b<1000 then return nil end
+  local h=b:sub(1,4)
+  if h=="OggS" then return "ogg" end
+  if h:sub(1,3)=="ID3" or b:byte(1)==255 then return "mp3" end
+end
 local function dlData(url)
   local rq=request or http_request or (syn and syn.request)
   if rq then
     local ok,r=pcall(rq,{Url=url,Method="GET"})
-    if ok and type(r)=="table" and type(r.Body)=="string" and #r.Body>1000 and (r.StatusCode==nil or r.StatusCode==200) then return r.Body end
-  end
+    if ok and type(r)=="table" then
+      ilog("request status="..tostring(r.StatusCode).." len="..tostring(type(r.Body)=="string" and #r.Body or "-"))
+      local ext=audioExt(r.Body)
+      if ext then return r.Body,ext end
+      if type(r.Body)=="string" then ilog("request body head="..(r.Body:sub(1,4):gsub("[^%w]","?"))) end
+    else ilog("request failed: "..tostring(r)) end
+  else ilog("no request function") end
   local ok,b=pcall(function() return game:HttpGet(url) end)
-  if ok and type(b)=="string" and #b>1000 then return b end
+  if ok then
+    ilog("HttpGet len="..tostring(type(b)=="string" and #b or "-"))
+    local ext=audioExt(b)
+    if ext then return b,ext end
+  else ilog("HttpGet failed: "..tostring(b)) end
 end
 local function ensureIntro()
-  if not cfg.intro or INTRO_URL=="" or not (writefile and listfiles and getcustomasset) then return end
-  if findIntro() then return end
+  if not cfg.intro then return end
+  if INTRO_URL=="" then ilog("INTRO_URL empty") return end
+  if not (writefile and listfiles and getcustomasset) then ilog("executor lacks writefile/listfiles/getcustomasset") return end
+  local f=findIntro()
+  if f then ilog("intro file exists: "..tostring(f)) return end
   st("Intro: downloading...")
-  local data=dlData(INTRO_URL)
-  if not data then st("Intro: download failed (link/HTTP?)") return end
-  local h=data:sub(1,4)
-  local ext
-  if h:sub(1,3)=="ID3" or data:byte(1)==255 then ext="mp3" elseif h=="OggS" then ext="ogg" end
-  if not ext then st("Intro: link is not an mp3/ogg file") return end
-  local okw=pcall(writefile,MDIR.."/intro."..ext,data)
+  local data,ext=dlData(INTRO_URL)
+  if not data then st("Intro: download failed (Copy Log)") ilog("download failed") return end
+  local p=MDIR.."/intro."..ext
+  local okw,e=pcall(writefile,p,data)
+  ilog("writefile ok="..tostring(okw).." err="..tostring(e).." len="..#data)
   if not okw then st("Intro: could not save file") return end
+  local okr,back=pcall(readfile,p)
+  ilog("readback len="..tostring(okr and #back or back))
+  ilog("findIntro now: "..tostring(findIntro()))
 end
 
 G.ShoxOff=function()
@@ -1120,6 +1141,8 @@ local function summary()
   end
   put("--- LOG ---")
   for _,l in ipairs(rlog) do pcall(function() put(HS:JSONEncode(l)) end) end
+  put("--- INTRO ---")
+  for _,l in ipairs(idbg) do put(l) end
   return table.concat(L,"\n")
 end
 local function loadSlot(n)
@@ -1278,7 +1301,7 @@ tw(main,{Size=UDim2.fromOffset(220,WIN_H),BackgroundTransparency=TRANS[cfg.trans
 task.delay(0.9,clampMain)
 statsTxt()
 loadSlot(slot)
-task.spawn(function() ensureIntro() playIntro() end)
+task.spawn(function() ensureIntro() playIntro() ilog("playIntro returned, intro running="..tostring(introS~=nil)) end)
 task.spawn(function()
   if not game:IsLoaded() then game.Loaded:Wait() end
   if alive and cfg.lag then alRun(true) end
