@@ -1,4 +1,4 @@
--- Shox Hub | Cameraman TD Macro Recorder + Beat-Intro | v7.6
+-- Shox Hub | Cameraman TD Macro Recorder + Beat-Intro | v7.7
 pcall(function() getgenv().ShoxOff() end)
 local HS,UIS,TS,RS=game:GetService("HttpService"),game:GetService("UserInputService"),game:GetService("TweenService"),game:GetService("RunService")
 local lp=game:GetService("Players").LocalPlayer
@@ -8,6 +8,9 @@ local DISCORD="https://discord.gg/EA7xS26mA9"
 local MDIR=DIR.."/music" -- Intro-Datei (.mp3/.ogg) hier oder direkt in ShoxHub/ ablegen
 pcall(makefolder,DIR)
 pcall(makefolder,MDIR)
+-- Intro-Song wird beim ersten Start automatisch geladen und in ShoxHub/music/ gespeichert (nur einmal, danach lokal).
+-- Direktlink zur Intro-Datei (.mp3/.ogg) hier eintragen, z.B. catbox.moe oder GitHub raw. Leer = nur lokale Datei.
+local INTRO_URL="https://files.catbox.moe/j5p4sg.ogg"
 local IGNORE={} -- nie aufnehmen: IGNORE["RemoteName"]=true
 local SKIPB={"towerui","slots","jumpbutton"} -- beim Abspielen ueberspringen
 local DEDUP=0.05
@@ -799,6 +802,30 @@ local function playIntro()
   introFx(s)
 end
 
+-- Auto-Download des Intro-Songs (findIntro/introFx/playIntro bleiben unveraendert)
+local function dlData(url)
+  local rq=request or http_request or (syn and syn.request)
+  if rq then
+    local ok,r=pcall(rq,{Url=url,Method="GET"})
+    if ok and type(r)=="table" and type(r.Body)=="string" and #r.Body>1000 and (r.StatusCode==nil or r.StatusCode==200) then return r.Body end
+  end
+  local ok,b=pcall(function() return game:HttpGet(url) end)
+  if ok and type(b)=="string" and #b>1000 then return b end
+end
+local function ensureIntro()
+  if not cfg.intro or INTRO_URL=="" or not (writefile and listfiles and getcustomasset) then return end
+  if findIntro() then return end
+  st("Intro: downloading...")
+  local data=dlData(INTRO_URL)
+  if not data then st("Intro: download failed (link/HTTP?)") return end
+  local h=data:sub(1,4)
+  local ext
+  if h:sub(1,3)=="ID3" or data:byte(1)==255 then ext="mp3" elseif h=="OggS" then ext="ogg" end
+  if not ext then st("Intro: link is not an mp3/ogg file") return end
+  local okw=pcall(writefile,MDIR.."/intro."..ext,data)
+  if not okw then st("Intro: could not save file") return end
+end
+
 G.ShoxOff=function()
   alive=false rec,play=false,false gen+=1
   G.ShoxH=nil
@@ -1251,7 +1278,7 @@ tw(main,{Size=UDim2.fromOffset(220,WIN_H),BackgroundTransparency=TRANS[cfg.trans
 task.delay(0.9,clampMain)
 statsTxt()
 loadSlot(slot)
-task.spawn(playIntro)
+task.spawn(function() ensureIntro() playIntro() end)
 task.spawn(function()
   if not game:IsLoaded() then game.Loaded:Wait() end
   if alive and cfg.lag then alRun(true) end
