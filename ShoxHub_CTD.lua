@@ -4,7 +4,7 @@ local HS,UIS,TS,RS=game:GetService("HttpService"),game:GetService("UserInputServ
 local lp=game:GetService("Players").LocalPlayer
 local G=getgenv()
 local DIR="ShoxHub"
-local DISCORD="https://discord.gg/PNyaUQXeu"
+local DISCORD="https://discord.gg/EA7xS26mA9"
 local MDIR=DIR.."/music" -- Intro-Datei (.mp3/.ogg) hier oder direkt in ShoxHub/ ablegen
 pcall(makefolder,DIR)
 pcall(makefolder,MDIR)
