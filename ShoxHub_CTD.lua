@@ -1,4 +1,4 @@
--- Shox Hub | Cameraman TD Macro Recorder + Beat-Intro | v7.15
+-- Shox Hub | Cameraman TD Macro Recorder + Beat-Intro | v7.16
 pcall(function() getgenv().ShoxOff() end)
 local HS,UIS,TS,RS=game:GetService("HttpService"),game:GetService("UserInputService"),game:GetService("TweenService"),game:GetService("RunService")
 local lp=game:GetService("Players").LocalPlayer
@@ -20,7 +20,9 @@ local USE={TowerUpgrade=true,TowerSell=true}
 local NEAR=12
 local GP="^%x+%-%x+%-%x+%-%x+%-%x+$"
 local RUNS,SCALES,SNAME,TRANS={0},{0.85,1,1.2},{"S","M","L"},{0,0.2,0.4} -- RUNS={0}: immer Endless
-local cfg={theme="Black",runs=1,scale=2,trans=1,intro=true,lag=false,slot=1,ap=false,dev=false,names={},st={runs=0,time=0}}
+local NSLOTS=10
+local SPEEDS,SPNAME={0.75,1,1.25,1.5,2},{"0.75x","1x","1.25x","1.5x","2x"}
+local cfg={theme="Black",runs=1,scale=2,trans=1,intro=true,lag=false,slot=1,ap=false,dev=false,speed=2,rainbow=false,hookOn=false,hook="",names={},st={runs=0,time=0,best=0,last=0,hist={}}}
 do
   local ok,j=pcall(function() return HS:JSONDecode(readfile(DIR.."/settings.json")) end)
   if ok and type(j)=="table" then for k,v in pairs(j) do cfg[k]=v end end
@@ -29,21 +31,30 @@ do
   if not RUNS[cfg.runs] then cfg.runs=1 end
   if not SCALES[cfg.scale] then cfg.scale=2 end
   if not TRANS[cfg.trans] then cfg.trans=1 end
+  if not SPEEDS[cfg.speed] then cfg.speed=2 end
   cfg.intro=cfg.intro~=false
   cfg.lag=cfg.lag==true
   cfg.ap=cfg.ap==true
   cfg.dev=cfg.dev==true
+  cfg.rainbow=cfg.rainbow==true
+  cfg.hookOn=cfg.hookOn==true
+  if type(cfg.hook)~="string" then cfg.hook="" end
   cfg.auto=nil
   cfg.runs=1
   if type(cfg.names)~="table" then cfg.names={} end
   if type(cfg.st)~="table" then cfg.st={} end
   cfg.st.runs=tonumber(cfg.st.runs) or 0
   cfg.st.time=tonumber(cfg.st.time) or 0
-  if type(cfg.slot)~="number" or cfg.slot<1 or cfg.slot>5 then cfg.slot=1 end
+  cfg.st.best=tonumber(cfg.st.best) or 0
+  cfg.st.last=tonumber(cfg.st.last) or 0
+  if type(cfg.st.hist)~="table" then cfg.st.hist={} end
+  if type(cfg.slot)~="number" or cfg.slot<1 or cfg.slot>NSLOTS then cfg.slot=1 end
 end
 local function saveCfg() pcall(writefile,DIR.."/settings.json",HS:JSONEncode(cfg)) end
 local function sname(n) return cfg.names[tostring(n)] or "" end
 local rec,play,t0,steps,miss,slot,rlog=false,false,0,{},0,cfg.slot,{}
+local paused=false
+local sess0,coin0
 local lastK,lastT=nil,0
 local idmap={}
 local idloc
@@ -269,7 +280,7 @@ local function locate(id)
   return #r>0 and table.concat(r," | ") or "nicht im Workspace"
 end
 
--- Themes: Schwarz, Weiss, Frost, Natural, Lava
+-- Themes: Black, White, Frost, Natural, Lava, Violet, Sakura, Gold, Ocean
 local function C(r,g,b) return Color3.fromRGB(r,g,b) end
 local W=C(255,255,255)
 local THEMES={
@@ -278,6 +289,10 @@ local THEMES={
   {"Frost",{bg=C(10,22,40),btn=C(24,48,80),btxt=C(225,242,255),acc=C(120,200,255),sub=C(170,205,235),rec=C(50,100,160),play=C(60,130,200),del=C(40,70,110),ctxt=W,ron=C(30,140,230),pon=C(30,160,190),onT=W}},
   {"Natural",{bg=C(10,24,14),btn=C(24,52,30),btxt=C(225,245,225),acc=C(90,200,90),sub=C(170,210,170),rec=C(120,80,35),play=C(50,140,70),del=C(90,50,30),ctxt=W,ron=C(200,80,40),pon=C(120,190,60),onT=W}},
   {"Lava",{bg=C(20,8,6),btn=C(52,22,14),btxt=C(255,225,200),acc=C(255,100,20),sub=C(255,190,150),rec=C(150,30,10),play=C(190,65,10),del=C(105,25,15),ctxt=W,ron=C(255,50,20),pon=C(230,140,0),onT=W}},
+  {"Violet",{bg=C(16,8,30),btn=C(40,24,72),btxt=C(238,228,255),acc=C(180,120,255),sub=C(185,165,225),rec=C(90,50,150),play=C(110,60,190),del=C(70,34,100),ctxt=W,ron=C(150,70,255),pon=C(200,90,255),onT=W}},
+  {"Sakura",{bg=C(30,10,20),btn=C(70,28,48),btxt=C(255,230,240),acc=C(255,130,180),sub=C(240,180,205),rec=C(150,50,90),play=C(190,70,120),del=C(100,34,64),ctxt=W,ron=C(255,70,140),pon=C(255,150,190),onT=W}},
+  {"Gold",{bg=C(16,13,4),btn=C(44,36,10),btxt=C(255,242,200),acc=C(255,200,50),sub=C(220,195,130),rec=C(120,90,20),play=C(160,120,20),del=C(80,60,14),ctxt=W,ron=C(255,190,30),pon=C(255,215,80),onT=C(20,14,0)}},
+  {"Ocean",{bg=C(5,20,24),btn=C(12,52,60),btxt=C(215,250,250),acc=C(40,220,200),sub=C(150,215,210),rec=C(20,100,110),play=C(20,140,140),del=C(14,70,80),ctxt=W,ron=C(0,200,180),pon=C(40,230,160),onT=C(0,20,20)}},
 }
 local TM={}
 for _,t in ipairs(THEMES) do TM[t[1]]=t[2] end
@@ -381,11 +396,15 @@ local function btn(par,txt,i,n,bgf,txf,ts)
   return b
 end
 local bRec=btn(row(40),"Record",1,1,nil,nil,15)
-local bPlay=btn(row(40),"Play",1,1,nil,nil,15)
+local pRow=row(40)
+local bPlay=btn(pRow,"Play",1,2,nil,nil,15)
+local bPause=btn(pRow,"Pause",2,2,fBtn,fBtxt,14)
 lbl("SLOTS")
 local sRow=row(30)
+local sRow2=row(30)
 local sb={}
 for i=1,5 do sb[i]=btn(sRow,tostring(i),i,5,nil,nil,14) end
+for i=6,NSLOTS do sb[i]=btn(sRow2,tostring(i),i-5,5,nil,nil,14) end
 -- Slot-Name (gehoert zum gewaehlten Slot)
 local nBox=mk("TextBox",{Size=UDim2.new(1,0,0,28),Text="",PlaceholderText="Slot name...",ClearTextOnFocus=false,MaxVisibleGraphemes=-1,Font=Enum.Font.GothamBold,TextSize=12,BorderSizePixel=0,TextTruncate=Enum.TextTruncate.AtEnd,LayoutOrder=0},row(28))
 mk("UICorner",{CornerRadius=UDim.new(0,9)},nBox)
@@ -403,13 +422,54 @@ local dRow=row(28)
 local bDelCur=btn(dRow,"Delete Current",1,2,fDel,fCtxt,12)
 local bDelSlot=btn(dRow,"Delete Slot",2,2,fDel,fCtxt,12)
 lbl("STATS")
-local stLbl=mk("TextLabel",{Size=UDim2.new(1,0,0,32),BackgroundTransparency=1,Text="",TextXAlignment=Enum.TextXAlignment.Left,TextYAlignment=Enum.TextYAlignment.Top,Font=Enum.Font.Gotham,TextSize=11,TextWrapped=true},row(32))
+local stLbl=mk("TextLabel",{Size=UDim2.new(1,0,0,58),BackgroundTransparency=1,Text="",TextXAlignment=Enum.TextXAlignment.Left,TextYAlignment=Enum.TextYAlignment.Top,Font=Enum.Font.Gotham,TextSize=11,TextWrapped=true},row(58))
 reg(stLbl,"TextColor3",fBtxt)
+-- Verlauf: Balken der letzten 10 Runs (neuester rechts)
+local histRow=row(30)
+local hbars={}
+for i=1,10 do
+  local f=mk("Frame",{AnchorPoint=Vector2.new(0,1),Position=UDim2.new((i-1)/10,0,1,0),Size=UDim2.new(0.1,-2,0,2),BorderSizePixel=0},histRow)
+  mk("UICorner",{CornerRadius=UDim.new(0,2)},f)
+  reg(f,"BackgroundColor3",fAcc)
+  hbars[i]=f
+end
 local bStR=btn(row(26),"Reset Stats",1,1,fDel,fCtxt,12)
 local function hms(x) x=math.floor(x) return string.format("%d:%02d:%02d",x//3600,(x%3600)//60,x%60) end
+local function drawHist()
+  local h=cfg.st.hist
+  local mx=0
+  for _,v in ipairs(h) do if v>mx then mx=v end end
+  local off=10-#h
+  for i=1,10 do
+    local v=h[i-off]
+    local px=(v and mx>0) and math.max(4,math.floor(v/mx*28)) or 2
+    tw(hbars[i],{Size=UDim2.new(0.1,-2,0,px),BackgroundTransparency=v and 0 or 0.8},.3)
+  end
+end
+-- Coins: nur wenn das Spiel einen Wert mit coin/cash/money in leaderstats hat, sonst bleibt die Zeile weg
+local function coinStat()
+  local ls=lp:FindFirstChild("leaderstats")
+  if not ls then return nil end
+  for _,v in ipairs(ls:GetChildren()) do
+    if v:IsA("IntValue") or v:IsA("NumberValue") then
+      local n=v.Name:lower()
+      if n:find("coin",1,true) or n:find("cash",1,true) or n:find("money",1,true) then return v end
+    end
+  end
+end
 local function statsTxt()
   local s=cfg.st
-  stLbl.Text="Runs: "..s.runs.."  |  Avg: "..mmss(s.runs>0 and s.time/s.runs or 0).."\nTotal time: "..hms(s.time)
+  local avg=s.runs>0 and s.time/s.runs or 0
+  local ph=s.time>0 and s.runs/(s.time/3600) or 0
+  local l="Runs: "..s.runs.."  |  Avg: "..mmss(avg).."\nBest: "..mmss(s.best).."  |  Last: "..mmss(s.last).."\nTotal: "..hms(s.time).."  |  "..string.format("%.1f",ph).." runs/h"
+  local cv=coinStat()
+  if cv and coin0 then
+    local gain=cv.Value-coin0
+    local el=sess0 and (os.clock()-sess0) or 0
+    l=l.."\nCoins: +"..math.floor(gain).."  ("..math.floor(el>60 and gain/(el/3600) or 0).."/h)"
+  end
+  stLbl.Text=l
+  drawHist()
 end
 lbl("OPTIONS")
 local o1=row(28)
@@ -421,11 +481,22 @@ local bTheme=btn(o2,"",2,2,fBtn,fBtxt,12)
 local o3=row(28)
 local bLag=btn(o3,"",1,2,fBtn,fBtxt,12)
 local bIntro=btn(o3,"",2,2,fBtn,fBtxt,12)
+local o4=row(28)
+local bSpeed=btn(o4,"",1,2,fBtn,fBtxt,12)
+local bRainbow=btn(o4,"",2,2,fBtn,fBtxt,12)
 local DDROWS=math.ceil(#THEMES/2)
 local DDH=DDROWS*32-6+8
 local ddRow=row(0)
 ddRow.ClipsDescendants=true
 mk("UIPadding",{PaddingLeft=UDim.new(0,4),PaddingRight=UDim.new(0,4),PaddingTop=UDim.new(0,4),PaddingBottom=UDim.new(0,4)},ddRow)
+lbl("DISCORD WEBHOOK")
+local hookBox=mk("TextBox",{Size=UDim2.new(1,0,1,0),Text="",PlaceholderText="Webhook URL...",ClearTextOnFocus=true,Font=Enum.Font.GothamBold,TextSize=12,BorderSizePixel=0,TextTruncate=Enum.TextTruncate.AtEnd},row(28))
+mk("UICorner",{CornerRadius=UDim.new(0,9)},hookBox)
+mk("UIPadding",{PaddingLeft=UDim.new(0,8),PaddingRight=UDim.new(0,8)},hookBox)
+reg(hookBox,"BackgroundColor3",fBtn) reg(hookBox,"TextColor3",fBtxt) reg(hookBox,"PlaceholderColor3",fSub)
+local hRow=row(28)
+local bHook=btn(hRow,"",1,2,fBtn,fBtxt,12)
+local bHookT=btn(hRow,"Test",2,2,fBtn,fBtxt,12)
 local bDisc=btn(row(28),"Copy Discord Link",1,1,function(t) return t.acc:Lerp(t.bg,0.4) end,fCtxt,12)
 local foot=row(14)
 reg(mk("TextLabel",{Size=UDim2.new(1,0,1,0),BackgroundTransparency=1,Text=DISCORD,TextXAlignment=Enum.TextXAlignment.Left,Font=Enum.Font.Gotham,TextSize=10},foot),"TextColor3",fSub)
@@ -442,17 +513,19 @@ end
 local function stq(t) status.Text=t end
 local function recTxt() return "Stop  "..mmss(os.clock()-t0).."  ("..#steps..")" end
 local function updateSlots()
-  for n=1,5 do
+  for n=1,NSLOTS do
     local b=sb[n]
     local sel=n==slot
     tw(b,{BackgroundColor3=sel and T.acc or T.btn,TextColor3=sel and T.bg or (filled[n] and T.btxt or T.sub)},.25)
   end
 end
 local function ui()
+  if not play then paused=false end
   bRec.Text=rec and recTxt() or "Record"
   tw(bRec,{BackgroundColor3=rec and T.ron or T.rec,TextColor3=rec and T.onT or T.ctxt},.3)
   bPlay.Text=play and "Stop" or "Play"
   tw(bPlay,{BackgroundColor3=play and T.pon or T.play,TextColor3=play and T.onT or T.ctxt},.3)
+  bPause.Text=paused and "Resume" or "Pause"
   updateSlots()
 end
 local function optTxt()
@@ -462,6 +535,9 @@ local function optTxt()
   bTheme.Text="Theme: "..themeName
   bLag.Text="Anti-Lag: "..(cfg.lag and "On" or "Off")
   bIntro.Text="Intro: "..(cfg.intro and "On" or "Off")
+  bSpeed.Text="Speed: "..SPNAME[cfg.speed]
+  bRainbow.Text="Rainbow: "..(cfg.rainbow and "On" or "Off")
+  bHook.Text="Webhook: "..(cfg.hookOn and "On" or "Off")
 end
 
 -- Drag + Minimize
@@ -538,6 +614,24 @@ on(bMin.MouseButton1Click,function()
   task.delay(.5,clampMain)
 end)
 
+-- Rahmen-Farbe: Theme-Verlauf oder Regenbogen
+local RAINBOW=ColorSequence.new({
+  ColorSequenceKeypoint.new(0,C(255,60,60)),
+  ColorSequenceKeypoint.new(0.17,C(255,200,40)),
+  ColorSequenceKeypoint.new(0.34,C(80,255,80)),
+  ColorSequenceKeypoint.new(0.5,C(40,220,255)),
+  ColorSequenceKeypoint.new(0.67,C(80,100,255)),
+  ColorSequenceKeypoint.new(0.84,C(255,70,220)),
+  ColorSequenceKeypoint.new(1,C(255,60,60)),
+})
+local function borderFx()
+  if cfg.rainbow then
+    mGrad.Color=RAINBOW
+  else
+    mGrad.Color=ColorSequence.new({ColorSequenceKeypoint.new(0,T.acc),ColorSequenceKeypoint.new(0.5,T.acc:Lerp(T.bg,0.75)),ColorSequenceKeypoint.new(1,T.acc)})
+  end
+end
+
 -- Theme-Dropdown (gleitet auf/zu, Eintraege blenden gestaffelt ein)
 local applyTheme
 local ddOpen=false
@@ -582,7 +676,7 @@ applyTheme=function(name,quick)
   if not TM[name] then return end
   T,themeName=TM[name],name
   cfg.theme=name
-  mGrad.Color=ColorSequence.new({ColorSequenceKeypoint.new(0,T.acc),ColorSequenceKeypoint.new(0.5,T.acc:Lerp(T.bg,0.75)),ColorSequenceKeypoint.new(1,T.acc)})
+  borderFx()
   for _,e in ipairs(themed) do
     local v=e[3](T)
     if quick then e[1][e[2]]=v else tw(e[1],{[e[2]]=v},.4) end
@@ -676,6 +770,12 @@ local function cyc(b,key,list,after)
 end
 cyc(bSize,"scale",SCALES,function() tw(uis,{Scale=SCALES[cfg.scale]},.4,Enum.EasingStyle.Back) task.delay(.5,clampMain) end)
 cyc(bTrans,"trans",TRANS,function() tw(main,{BackgroundTransparency=TRANS[cfg.trans]},.3) end)
+cyc(bSpeed,"speed",SPEEDS)
+on(bRainbow.MouseButton1Click,function()
+  cfg.rainbow=not cfg.rainbow
+  borderFx()
+  optTxt() saveCfg()
+end)
 on(bLag.MouseButton1Click,function()
   cfg.lag=not cfg.lag
   alRun(cfg.lag)
@@ -980,7 +1080,7 @@ on(pg.DescendantAdded,hookBtn)
 
 -- Effekte pro Frame (Rahmen-Rotation, Titel-Glanz, Puls bei Record/Play) + Anzeige alle 0.5s
 local pulsers={{bRec,function() return rec end},{bPlay,function() return play end}}
-local ac2=0
+local ac2,ac3=0,0
 on(RS.Heartbeat,function(dt)
   local c=os.clock()
   mGrad.Rotation=(c*50)%360
@@ -999,11 +1099,23 @@ on(RS.Heartbeat,function(dt)
   ac2+=dt
   if ac2<0.5 then return end
   ac2=0
+  -- minimiert: Titel zeigt Run-Zeit bzw. Aufnahmezeit
+  local ttl="Shox Hub"
+  if mini then
+    if play and runT0 then ttl="Run "..runI.." | "..mmss(os.clock()-runT0)
+    elseif rec then ttl="Rec "..mmss(os.clock()-t0) end
+  end
+  if title.Text~=ttl then title.Text=ttl end
   if rec then bRec.Text=recTxt()
   elseif play and runT0 then
     local lim=RUNS[cfg.runs]
-    if waitEnd then stq("Run "..runI.." | waiting for Play Again...")
+    if paused then stq("Paused | Run "..runI)
+    elseif waitEnd then stq("Run "..runI.." | waiting for Play Again...")
     else stq("Run "..runI..(lim>0 and ("/"..lim) or "").." | "..mmss(os.clock()-runT0).." / "..mmss(runTot)) end
+  end
+  if play then
+    ac3+=1
+    if ac3>=10 then ac3=0 pcall(statsTxt) end
   end
 end)
 
@@ -1012,6 +1124,16 @@ local function lg(e) if #rlog<300 then rlog[#rlog+1]=e end end
 local function skipB(s)
   local nm=(table.concat(s.p,"."):gsub("\1","#")..tostring(s.m)):lower()
   for _,w in ipairs(SKIPB) do if nm:find(w,1,true) then return true end end
+end
+-- Pause: haelt den Ablauf an und gibt die Pausenzeit zurueck (Zeitplan wird entsprechend verschoben)
+local function pauseGate(my)
+  local p=0
+  while paused and play and gen==my do
+    local p0=os.clock()
+    task.wait(0.2)
+    p+=os.clock()-p0
+  end
+  return p
 end
 -- Ende-Erkennung: "Play Again" wird erst ausgefuehrt, wenn der Endbildschirm wirklich sichtbar ist
 local function vis(x)
@@ -1043,6 +1165,7 @@ local function isEnd(s)
 end
 local function runOnce(my)
   idmap={}
+  local sp=SPEEDS[cfg.speed] or 1
   local ordl,inOrd,oi={},{},0
   local hasRPA=false
   for _,s in ipairs(steps) do
@@ -1059,9 +1182,12 @@ local function runOnce(my)
   for _,id in ipairs(ordl) do if not tset[id] then orph[#orph+1]=id end end
   local base,pk,pt=os.clock(),nil,0
   local paAt,fired=-10,false
-  runT0,runTot=base,(steps[#steps] and steps[#steps].t or 0)
+  runT0,runTot=base,(steps[#steps] and steps[#steps].t or 0)/sp
   for idx,s in ipairs(steps) do
     if not play or gen~=my then return end
+    base+=pauseGate(my)
+    if not play or gen~=my then return end
+    local tt=s.t/sp
     local key=s.k..HS:JSONEncode({s.p,tostring(s.m),s.a})
     if key==pk and s.t-pt<DEDUP then pt=s.t continue end
     pk,pt=key,s.t
@@ -1074,7 +1200,7 @@ local function runOnce(my)
       while play and gen==my do
         b,ex=paScan()
         if b then break end
-        if not ex and os.clock()>base+s.t+60 then break end -- kein Play-Again-Text auffindbar: nach Aufnahmezeit+60s trotzdem
+        if not ex and os.clock()>base+tt+60 then break end -- kein Play-Again-Text auffindbar: nach Aufnahmezeit+60s trotzdem
         if os.clock()-t>900 then break end
         task.wait(0.5)
       end
@@ -1108,8 +1234,12 @@ local function runOnce(my)
       lg(info)
       continue
     end
-    local w=base+s.t-os.clock()
-    while w>0 and play and gen==my do task.wait(math.min(w,0.25)) w=base+s.t-os.clock() end
+    local w=base+tt-os.clock()
+    while w>0 and play and gen==my do
+      task.wait(math.min(w,0.25))
+      base+=pauseGate(my)
+      w=base+tt-os.clock()
+    end
     if not play or gen~=my then return end
     local o=find(s.p)
     if not o then
@@ -1161,6 +1291,42 @@ local function runOnce(my)
   end
 end
 
+-- Discord-Webhook: Meldung nach jedem Run (nur wenn eingeschaltet und gueltige URL gesetzt)
+local function hookUrl()
+  local u=cfg.hook
+  if type(u)~="string" then return nil end
+  if u:find("^https://discord.com/api/webhooks/") or u:find("^https://discordapp.com/api/webhooks/") or u:find("^https://canary.discord.com/api/webhooks/") or u:find("^https://ptb.discord.com/api/webhooks/") then return u end
+  return nil
+end
+local function sendHook(ttl,fields)
+  local u=hookUrl()
+  local rq=request or http_request or (syn and syn.request)
+  if not u or not rq then return false end
+  local ok,r=pcall(rq,{
+    Url=u,Method="POST",Headers={["Content-Type"]="application/json"},
+    Body=HS:JSONEncode({username="Shox Hub",embeds={{title=ttl,color=5793266,fields=fields,footer={text="Shox Hub v7.16"}}}})
+  })
+  if not ok or type(r)~="table" then return false end
+  local sc=r.StatusCode
+  return sc==nil or (sc>=200 and sc<300)
+end
+local function sendReport(i,took)
+  local s=cfg.st
+  local nm=sname(slot)
+  local f={
+    {name="Run",value=tostring(i),inline=true},
+    {name="Time",value=mmss(took),inline=true},
+    {name="Slot",value=tostring(slot)..(nm~="" and (" ("..nm..")") or ""),inline=true},
+    {name="Total runs",value=tostring(s.runs),inline=true},
+    {name="Avg",value=mmss(s.runs>0 and s.time/s.runs or 0),inline=true},
+    {name="Runs/h",value=string.format("%.1f",s.time>0 and s.runs/(s.time/3600) or 0),inline=true},
+  }
+  local cv=coinStat()
+  if cv and coin0 then f[#f+1]={name="Coins",value="+"..math.floor(cv.Value-coin0),inline=true} end
+  return sendHook("Run "..i.." done",f)
+end
+local function showHook() hookBox.Text=hookUrl() and "Webhook saved" or "" end
+
 -- Slots + Zusammenfassung
 local function file(n) return DIR.."/slot"..n..".json" end
 local function stats()
@@ -1186,7 +1352,7 @@ end
 local function summary()
   local L={}
   local function put(l) L[#L+1]=l:sub(1,220) end
-  put("Shox Hub Slot "..slot.." | "..stats().." | runs="..RUNS[cfg.runs].." lag="..tostring(cfg.lag))
+  put("Shox Hub Slot "..slot.." | "..stats().." | runs="..RUNS[cfg.runs].." lag="..tostring(cfg.lag).." speed="..SPNAME[cfg.speed])
   for _,s in ipairs(steps) do
     if s.loc then L[#L+1]=("IdLoc: "..s.loc):sub(1,400) break end
   end
@@ -1259,8 +1425,13 @@ local function startPlay()
   local act=false
   for _,s in ipairs(steps) do if s.k=="R" or s.k=="B" then act=true break end end
   if not act then return st("Slot has no actions, record first") end
-  play=true gen+=1
+  play=true paused=false gen+=1
   local my=gen
+  if not sess0 then
+    sess0=os.clock()
+    local cv=coinStat()
+    coin0=cv and cv.Value or nil
+  end
   ui()
   task.spawn(function()
     local i=0
@@ -1271,8 +1442,15 @@ local function startPlay()
       local took=runT0 and (os.clock()-runT0) or 0
       runT0=nil
       if not (play and gen==my) then break end
-      cfg.st.runs+=1 cfg.st.time+=took
+      local s=cfg.st
+      s.runs+=1 s.time+=took s.last=took
+      if s.best==0 or took<s.best then s.best=took end
+      s.hist[#s.hist+1]=took
+      while #s.hist>10 do table.remove(s.hist,1) end
       saveCfg() statsTxt()
+      if cfg.hookOn and hookUrl() then
+        task.spawn(function() pcall(sendReport,i,took) end)
+      end
       local e=0
       for _,l in ipairs(rlog) do if l.ok==false then e+=1 end end
       st("Run "..i.." done | "..miss.." missing, "..e.." errors")
@@ -1288,7 +1466,13 @@ on(bPlay.MouseButton1Click,function()
   if play then play=false gen+=1 runT0=nil waitEnd=false st("Stopped") ui() return end
   startPlay()
 end)
-for i=1,5 do
+on(bPause.MouseButton1Click,function()
+  if rec or not play then return end
+  paused=not paused
+  ui()
+  st(paused and "Paused" or "Resumed")
+end)
+for i=1,NSLOTS do
   on(sb[i].MouseButton1Click,function()
     if rec or play then return end
     armRec=false slot=i cfg.slot=i saveCfg() loadSlot(i) optTxt()
@@ -1324,6 +1508,40 @@ on(bDisc.MouseButton1Click,function()
   bDisc.Text=ok and "Copied!" or "Error"
   task.delay(1.2,function() if discTok==my then bDisc.Text="Copy Discord Link" end end)
 end)
+-- Webhook-Bedienung
+on(hookBox.FocusLost,function()
+  local t=hookBox.Text:gsub("^%s+",""):gsub("%s+$","")
+  if t~="" and t~="Webhook saved" then
+    local old=cfg.hook
+    cfg.hook=t
+    if hookUrl() then
+      saveCfg()
+      st("Webhook saved")
+    else
+      cfg.hook=old
+      st("Invalid webhook URL")
+    end
+  end
+  showHook()
+end)
+on(bHook.MouseButton1Click,function()
+  if not cfg.hookOn and not hookUrl() then st("Set a webhook URL first") return end
+  cfg.hookOn=not cfg.hookOn
+  optTxt() saveCfg()
+  st(cfg.hookOn and "Webhook on" or "Webhook off")
+end)
+local hookBusy=false
+on(bHookT.MouseButton1Click,function()
+  if hookBusy then return end
+  if not hookUrl() then st("Set a webhook URL first") return end
+  hookBusy=true
+  task.spawn(function()
+    local ok=false
+    pcall(function() ok=sendHook("Shox Hub test",{{name="Status",value="Webhook works",inline=true}}) end)
+    st(ok and "Webhook test sent" or "Webhook test failed")
+    hookBusy=false
+  end)
+end)
 confirm(bDelCur,"Delete Current",function()
   rec,play,steps=false,false,{}
   gen+=1 runT0=nil waitEnd=false
@@ -1338,7 +1556,13 @@ on(nBox.FocusLost,function()
   st(t~="" and ("Slot "..slot.." named: "..t) or ("Slot "..slot.." name cleared"))
 end)
 confirm(bStR,"Reset Stats",function()
-  cfg.st={runs=0,time=0}
+  cfg.st={runs=0,time=0,best=0,last=0,hist={}}
+  sess0,coin0=nil,nil
+  if play then
+    sess0=os.clock()
+    local cv=coinStat()
+    coin0=cv and cv.Value or nil
+  end
   saveCfg() statsTxt()
   st("Stats reset")
 end)
@@ -1350,12 +1574,13 @@ confirm(bDelSlot,"Delete Slot",function()
 end)
 
 -- Start
-for n=1,5 do
+for n=1,NSLOTS do
   local ok,r=pcall(isfile,file(n))
   filled[n]=ok and r==true
 end
 applyTheme(TM[cfg.theme] and cfg.theme or "Black",true)
 showCopy()
+showHook()
 tw(main,{Size=UDim2.fromOffset(220,WIN_H),BackgroundTransparency=TRANS[cfg.trans]},.7,Enum.EasingStyle.Back)
 task.delay(0.9,clampMain)
 statsTxt()
