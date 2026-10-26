@@ -1,4 +1,4 @@
--- Shox Hub | Cameraman TD Macro Recorder + Beat-Intro | v7.14
+-- Shox Hub | Cameraman TD Macro Recorder + Beat-Intro | v7.15
 pcall(function() getgenv().ShoxOff() end)
 local HS,UIS,TS,RS=game:GetService("HttpService"),game:GetService("UserInputService"),game:GetService("TweenService"),game:GetService("RunService")
 local lp=game:GetService("Players").LocalPlayer
@@ -58,14 +58,24 @@ local function mmss(x) x=math.floor(x) return string.format("%d:%02d",x//60,x%60
 local function isIn(i) return i.UserInputType==Enum.UserInputType.Touch or i.UserInputType==Enum.UserInputType.MouseButton1 end
 local function rname() local t={} for i=1,10 do t[i]=string.char(math.random(97,122)) end return table.concat(t) end
 
--- Anti-AFK (fest eingebaut): Idled-Verbindungen aus + VirtualUser-Klick + Heartbeat-Nudge alle 50 s
+-- Anti-AFK (fest eingebaut): Idled-Verbindungen aus + VirtualUser-Klick + Mini-Sprung des Charakters alle ca. 25-35 s
+-- (der Sprung ist echte Bewegung: faengt auch Spiele ab, die AFK ueber Charakter-Bewegung erkennen)
 pcall(function() for _,c in pairs(getconnections(lp.Idled)) do c:Disable() end end)
 local VU=game:GetService("VirtualUser")
-on(lp.Idled,function() pcall(function() VU:CaptureController() VU:ClickButton2(Vector2.new()) end) end)
+local function nudge()
+  pcall(function() VU:CaptureController() VU:ClickButton2(Vector2.new()) end)
+  pcall(function()
+    local ch=lp.Character
+    local h=ch and ch:FindFirstChildOfClass("Humanoid")
+    if h and h.Health>0 then h.Jump=true end
+  end)
+end
+on(lp.Idled,nudge)
 task.spawn(function()
   while alive do
-    task.wait(50)
-    pcall(function() VU:CaptureController() VU:ClickButton2(Vector2.new()) end)
+    task.wait(25+math.random()*10)
+    if not alive then break end
+    nudge()
   end
 end)
 
