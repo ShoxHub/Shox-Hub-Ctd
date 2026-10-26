@@ -1,4 +1,4 @@
--- Shox Hub | Cameraman TD | v1.3
+-- Shox Hub | Cameraman TD | v1.4
 pcall(function() getgenv().ShoxOff() end)
 local HS,UIS,TS,RS=game:GetService("HttpService"),game:GetService("UserInputService"),game:GetService("TweenService"),game:GetService("RunService")
 local lp=game:GetService("Players").LocalPlayer
@@ -59,7 +59,7 @@ local function mmss(x) x=math.floor(x) return string.format("%d:%02d",x//60,x%60
 local function isIn(i) return i.UserInputType==Enum.UserInputType.Touch or i.UserInputType==Enum.UserInputType.MouseButton1 end
 local function rname() local t={} for i=1,10 do t[i]=string.char(math.random(97,122)) end return table.concat(t) end
 
--- Anti-AFK (fest eingebaut): Idled-Verbindungen aus + VirtualUser-Klick + echte Input-Events (Maus + Taste ueber VirtualInputManager)
+-- Anti-AFK (fest eingebaut): Idled-Verbindungen aus + VirtualUser-Klick + echte Input-Events (Maus + Taste ueber VirtualInputManager, nur ohne Touchscreen)
 -- + Mini-Bewegung des Charakters (Sprung und kurzer Schritt hin und zurueck) alle ca. 18-28 s
 pcall(function() for _,c in pairs(getconnections(lp.Idled)) do c:Disable() end end)
 local VU=game:GetService("VirtualUser")
@@ -67,7 +67,7 @@ local VIM
 pcall(function() VIM=game:GetService("VirtualInputManager") end)
 local function nudge()
   pcall(function() VU:CaptureController() VU:ClickButton2(Vector2.new()) end)
-  if VIM then
+  if VIM and not UIS.TouchEnabled then -- am Handy wuerde Maus/Taste den Joystick ausblenden
     pcall(function()
       local v=workspace.CurrentCamera.ViewportSize
       VIM:SendMouseMoveEvent(v.X/2+math.random(-6,6),v.Y/2+math.random(-6,6),game)
@@ -723,11 +723,14 @@ local alRun,alRestore
 do
 local LS=game:GetService("Lighting")
 local AL={on=false,orig=setmetatable({},{__mode="k"}),q={},qi=1,conn=nil,hb=nil,env=nil,rest={},ri=1}
-local FX={ParticleEmitter=true,Trail=true,Beam=true,Smoke=true,Fire=true,Sparkles=true,BloomEffect=true,BlurEffect=true,ColorCorrectionEffect=true,DepthOfFieldEffect=true,SunRaysEffect=true}
+local FX={ParticleEmitter=true,Trail=true,Beam=true,Smoke=true,Fire=true,Sparkles=true,PointLight=true,SpotLight=true,SurfaceLight=true,BloomEffect=true,BlurEffect=true,ColorCorrectionEffect=true,DepthOfFieldEffect=true,SunRaysEffect=true}
 local function alApply(x)
   if FX[x.ClassName] then
-    if AL.orig[x]==nil then AL.orig[x]=x.Enabled end
+    if AL.orig[x]==nil then
+      if x.ClassName=="ParticleEmitter" then AL.orig[x]={x.Enabled,x.Lifetime} else AL.orig[x]=x.Enabled end
+    end
     x.Enabled=false
+    if x.ClassName=="ParticleEmitter" then x.Lifetime=NumberRange.new(0) end -- :Emit() ignoriert Enabled
   elseif x:IsA("BasePart") and not x:IsA("Terrain") then
     if x.CastShadow or x.Reflectance>0 then
       if AL.orig[x]==nil then AL.orig[x]={x.Reflectance,x.CastShadow} end
@@ -759,7 +762,9 @@ function alRestore(budget)
       local x,v=e[1],e[2]
       pcall(function()
         if x.Parent then
-          if type(v)=="table" then x.Reflectance,x.CastShadow=v[1],v[2] else x.Enabled=v end
+          if type(v)=="table" then
+            if typeof(v[2])=="NumberRange" then x.Enabled,x.Lifetime=v[1],v[2] else x.Reflectance,x.CastShadow=v[1],v[2] end
+          else x.Enabled=v end
         end
       end)
       AL.orig[x]=nil
