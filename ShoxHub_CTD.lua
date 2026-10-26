@@ -1,4 +1,4 @@
--- Shox Hub | Cameraman TD Macro Recorder + Beat-Intro | v7.15
+-- Shox Hub | Cameraman TD | v7.16
 pcall(function() getgenv().ShoxOff() end)
 local HS,UIS,TS,RS=game:GetService("HttpService"),game:GetService("UserInputService"),game:GetService("TweenService"),game:GetService("RunService")
 local lp=game:GetService("Players").LocalPlayer
@@ -20,7 +20,7 @@ local USE={TowerUpgrade=true,TowerSell=true}
 local NEAR=12
 local GP="^%x+%-%x+%-%x+%-%x+%-%x+$"
 local RUNS,SCALES,SNAME,TRANS={0},{0.85,1,1.2},{"S","M","L"},{0,0.2,0.4} -- RUNS={0}: immer Endless
-local cfg={theme="Black",runs=1,scale=2,trans=1,intro=true,lag=false,slot=1,ap=false,dev=false,names={},st={runs=0,time=0}}
+local cfg={theme="Black",runs=1,scale=2,trans=1,intro=true,lag=false,slot=1,ap=false,dev=false,names={},st={runs=0,time=0,rt=0}}
 do
   local ok,j=pcall(function() return HS:JSONDecode(readfile(DIR.."/settings.json")) end)
   if ok and type(j)=="table" then for k,v in pairs(j) do cfg[k]=v end end
@@ -39,6 +39,7 @@ do
   if type(cfg.st)~="table" then cfg.st={} end
   cfg.st.runs=tonumber(cfg.st.runs) or 0
   cfg.st.time=tonumber(cfg.st.time) or 0
+  cfg.st.rt=tonumber(cfg.st.rt) or cfg.st.time -- rt = Zeit nur der fertigen Runs (fuer den Durchschnitt)
   if type(cfg.slot)~="number" or cfg.slot<1 or cfg.slot>5 then cfg.slot=1 end
 end
 local function saveCfg() pcall(writefile,DIR.."/settings.json",HS:JSONEncode(cfg)) end
@@ -322,13 +323,17 @@ end
 local hdr=mk("Frame",{Size=UDim2.new(1,-44,0,34),BackgroundTransparency=1},main)
 local title=mk("TextLabel",{Position=UDim2.fromOffset(12,0),Size=UDim2.new(1,-12,1,0),Text="Shox Hub",TextXAlignment=Enum.TextXAlignment.Left,BackgroundTransparency=1,Font=Enum.Font.GothamBlack,TextSize=17},hdr)
 reg(title,"TextColor3",fAcc)
--- Glanz-Effekt ueber dem Titel (Titel bleibt immer gut lesbar)
+-- Glanz-Effekt ueber dem Titel (Titel bleibt immer gut lesbar) + weiches Leuchten
 local titleG=mk("UIGradient",{Transparency=NumberSequence.new({NumberSequenceKeypoint.new(0,0.25),NumberSequenceKeypoint.new(0.5,0),NumberSequenceKeypoint.new(1,0.25)})},title)
+local titleS=mk("UIStroke",{Thickness=1.2,Transparency=0.85},title)
+reg(titleS,"Color",fAcc)
 local status=mk("TextLabel",{Position=UDim2.fromOffset(12,34),Size=UDim2.new(1,-24,0,18),Text="Ready | Anti-AFK on",TextXAlignment=Enum.TextXAlignment.Left,BackgroundTransparency=1,Font=Enum.Font.Gotham,TextSize=11,TextTruncate=Enum.TextTruncate.AtEnd},main)
 reg(status,"TextColor3",fSub)
 local dragH=mk("TextButton",{Size=UDim2.new(1,-44,0,56),BackgroundTransparency=1,Text="",AutoButtonColor=false,Active=true,ZIndex=2},main)
 local div=mk("Frame",{Position=UDim2.fromOffset(12,56),Size=UDim2.new(1,-24,0,1),BorderSizePixel=0},main)
-reg(div,"BackgroundColor3",fBtn)
+reg(div,"BackgroundColor3",fAcc)
+-- wandernder Lichtstreifen auf der Trennlinie
+local divG=mk("UIGradient",{Transparency=NumberSequence.new({NumberSequenceKeypoint.new(0,1),NumberSequenceKeypoint.new(0.5,0.1),NumberSequenceKeypoint.new(1,1)})},div)
 local body=mk("ScrollingFrame",{Position=UDim2.fromOffset(0,60),Size=UDim2.new(1,0,1,-60),BackgroundTransparency=1,BorderSizePixel=0,ScrollBarThickness=3,CanvasSize=UDim2.new(),AutomaticCanvasSize=Enum.AutomaticSize.Y,ScrollingDirection=Enum.ScrollingDirection.Y},main)
 reg(body,"ScrollBarImageColor3",fAcc)
 mk("UIListLayout",{Padding=UDim.new(0,6),SortOrder=Enum.SortOrder.LayoutOrder},body)
@@ -409,7 +414,7 @@ local bStR=btn(row(26),"Reset Stats",1,1,fDel,fCtxt,12)
 local function hms(x) x=math.floor(x) return string.format("%d:%02d:%02d",x//3600,(x%3600)//60,x%60) end
 local function statsTxt()
   local s=cfg.st
-  stLbl.Text="Runs: "..s.runs.."  |  Avg: "..mmss(s.runs>0 and s.time/s.runs or 0).."\nTotal time: "..hms(s.time)
+  stLbl.Text="Runs: "..s.runs.."  |  Avg: "..mmss(s.runs>0 and s.rt/s.runs or 0).."\nTotal time: "..hms(s.time)
 end
 lbl("OPTIONS")
 local o1=row(28)
@@ -712,6 +717,7 @@ end
 
 -- Beat-Intro: Zeitplan in Sekunden ab Songstart (abgestimmt auf die 5,06-s-Intro-Datei)
 -- {Zeit, Staerke, Art}: a = SHOX knallt rein, b = HUB knallt rein, drop = Drop, end = Finale
+-- Effekte: Screen-Shake, Kamera-Kick (Tilt), RGB-Split, Zoom-Puls, Ringe, Funken, Speed-Streaks, Flash
 local LET={"S","H","O","X","H","U","B"}
 local BEATS={{0.05,1,"a"},{0.52,1,"b"},{0.84,0.6},{1.28,0.9},{1.58,0.5},{1.88,0.9},{2.11,0.6},{2.48,2.2,"drop"},{3.15,1},{3.74,1},{4.34,1.2},{4.75,1.7,"end"}}
 local FADE0,FADE1=4.95,5.5
@@ -729,8 +735,13 @@ local function introFx(snd)
     local x=-163+(i-1)*50+(i>=5 and 26 or 0)
     local w=mk("Frame",{AnchorPoint=Vector2.new(.5,.5),Position=UDim2.new(.5,x,.5,-10),Size=UDim2.fromOffset(50,80),BackgroundTransparency=1,BorderSizePixel=0},stage)
     local us=mk("UIScale",{Scale=1},w)
-    local lb=mk("TextLabel",{Size=UDim2.fromScale(1,1),BackgroundTransparency=1,Text=ch,Font=Enum.Font.GothamBlack,TextSize=76,TextColor3=T.acc,TextTransparency=1},w)
-    L[i]={w=w,us=us,lb=lb,x=x,hit=-10,amp=0,rev=math.huge}
+    local function lab(col,z)
+      return mk("TextLabel",{Size=UDim2.fromScale(1,1),BackgroundTransparency=1,Text=ch,Font=Enum.Font.GothamBlack,TextSize=76,TextColor3=col,TextTransparency=1,ZIndex=z},w)
+    end
+    local gr=lab(C(255,40,70),1)
+    local gc=lab(C(40,220,255),1)
+    local lb=lab(T.acc,2)
+    L[i]={w=w,us=us,lb=lb,gr=gr,gc=gc,x=x,hit=-10,amp=0,rev=math.huge}
   end
   local line=mk("Frame",{AnchorPoint=Vector2.new(.5,.5),Position=UDim2.new(.5,0,.5,52),Size=UDim2.fromOffset(0,4),BackgroundColor3=T.acc,BorderSizePixel=0},stage)
   local sub=mk("TextLabel",{AnchorPoint=Vector2.new(.5,.5),Position=UDim2.new(.5,0,.5,80),Size=UDim2.fromOffset(376,22),BackgroundTransparency=1,Text=DISCORD,Font=Enum.Font.GothamBold,TextSize=17,TextColor3=T.sub,TextTransparency=1},stage)
@@ -747,9 +758,19 @@ local function introFx(snd)
       local a=math.random()*math.pi*2
       local d=(wide and 260 or 130)*(0.4+math.random()*0.8)
       local sx=L[math.random(1,#L)].x
-      local p=mk("Frame",{AnchorPoint=Vector2.new(.5,.5),Position=UDim2.new(.5,sx,.5,-10),Size=UDim2.fromOffset(6,6),Rotation=math.random(0,90),BackgroundColor3=T.acc,BorderSizePixel=0},stage)
-      tw(p,{Position=UDim2.new(.5,sx+math.cos(a)*d,.5,-10+math.sin(a)*d),BackgroundTransparency=1,Size=UDim2.fromOffset(2,2)},0.55)
+      local p=mk("Frame",{AnchorPoint=Vector2.new(.5,.5),Position=UDim2.new(.5,sx,.5,-10),Size=UDim2.fromOffset(16,3),Rotation=math.deg(a),BackgroundColor3=T.acc,BorderSizePixel=0},stage)
+      tw(p,{Position=UDim2.new(.5,sx+math.cos(a)*d,.5,-10+math.sin(a)*d),BackgroundTransparency=1,Size=UDim2.fromOffset(3,2)},0.55)
       task.delay(0.6,function() p:Destroy() end)
+    end
+  end
+  local function streaks(n)
+    for _=1,n do
+      local a=math.random()*math.pi*2
+      local r0=90+math.random()*60
+      local r1=r0+300+math.random()*260
+      local p=mk("Frame",{AnchorPoint=Vector2.new(.5,.5),Position=UDim2.new(.5,math.cos(a)*r0,.5,-10+math.sin(a)*r0),Size=UDim2.fromOffset(80+math.random()*80,3),Rotation=math.deg(a),BackgroundColor3=T.acc,BorderSizePixel=0},stage)
+      tw(p,{Position=UDim2.new(.5,math.cos(a)*r1,.5,-10+math.sin(a)*r1),BackgroundTransparency=1},0.45)
+      task.delay(0.5,function() p:Destroy() end)
     end
   end
   local function ring(th)
@@ -760,7 +781,7 @@ local function introFx(snd)
     tw(sk,{Transparency=1},0.7)
     task.delay(0.8,function() r:Destroy() end)
   end
-  local tl,bi,pulse,shake,flashA,ul,subA=0,1,0,0,0,0,0
+  local tl,bi,pulse,shake,flashA,ul,subA,ab,tilt=0,1,0,0,0,0,0,0,0
   local done,hb=false,nil
   local function finish(stop)
     if done then return end
@@ -776,9 +797,11 @@ local function introFx(snd)
   on(skip.MouseButton1Click,function() finish(true) end)
   local function fire(b)
     local s,kind=b[2],b[3]
-    pulse=math.max(pulse,0.05+0.06*s)
-    shake=math.max(shake,6*s)
-    flashA=math.max(flashA,math.min(0.1*s,0.35))
+    pulse=math.max(pulse,0.07+0.08*s)
+    shake=math.max(shake,8*s)
+    flashA=math.max(flashA,math.min(0.12*s,0.4))
+    ab=math.max(ab,7*s)
+    tilt=(bi%2==0 and 1 or -1)*1.4*s
     local a,z,amp=1,#L,0.3*s
     if kind=="a" then a,z,amp=1,4,1.6 elseif kind=="b" then a,z,amp=5,7,1.6 end
     for i=a,z do
@@ -788,14 +811,15 @@ local function introFx(snd)
       if amp>1 then e.rev=e.hit end
     end
     if kind=="drop" then
-      pulse=0.35 shake=26 flashA=0.75
-      ring(6) task.delay(0.12,function() ring(3) end)
-      spark(24,true)
+      pulse=0.45 shake=36 flashA=0.85 ab=46 tilt=5
+      ring(6) task.delay(0.12,function() ring(3) end) task.delay(0.24,function() ring(2) end)
+      spark(30,true) streaks(22)
     elseif kind=="end" then
-      pulse=0.3 shake=20 flashA=0.6
-      ring(5) spark(18,true)
+      pulse=0.38 shake=28 flashA=0.7 ab=34 tilt=-4
+      ring(5) spark(22,true) streaks(16)
     else
       spark(math.floor(4*s)+2,false)
+      if s>=1 then streaks(math.floor(3*s)) end
     end
   end
   hb=on(RS.Heartbeat,function(dt)
@@ -803,18 +827,26 @@ local function introFx(snd)
     if snd.IsPlaying then tl=snd.TimePosition else tl+=dt end
     while BEATS[bi] and tl>=BEATS[bi][1] do fire(BEATS[bi]) bi+=1 end
     local f=math.clamp((tl-FADE0)/(FADE1-FADE0),0,1)
-    pulse*=math.exp(-dt*7) shake*=math.exp(-dt*9) flashA*=math.exp(-dt*8)
+    pulse*=math.exp(-dt*7) shake*=math.exp(-dt*9) flashA*=math.exp(-dt*8) ab*=math.exp(-dt*9) tilt*=math.exp(-dt*8)
     local sh=shake>0.3 and shake or 0
     stage.Position=UDim2.new(.5,(math.random()-.5)*2*sh,.5,(math.random()-.5)*2*sh)
-    stage.Rotation=(math.random()-.5)*0.3*sh
+    stage.Rotation=(math.random()-.5)*0.3*sh+tilt
     sc.Scale=base*(1+pulse)*(1+f*0.5)
     fl.BackgroundTransparency=1-flashA
     bg.BackgroundTransparency=f
+    bg.BackgroundColor3=T.bg:Lerp(T.acc,math.min(flashA*0.35,0.3))
     for i,e in ipairs(L) do
       local age=tl-e.hit
-      e.lb.TextTransparency=(tl>=e.rev) and f or 1
+      local tr=(tl>=e.rev) and f or 1
+      e.lb.TextTransparency=tr
+      local gt=(tr<1 and ab>0.5) and math.max(tr,0.5) or 1
+      e.gr.TextTransparency=gt
+      e.gc.TextTransparency=gt
+      local gx=ab*(0.6+0.4*math.random())
+      e.gr.Position=UDim2.fromOffset(-gx,0)
+      e.gc.Position=UDim2.fromOffset(gx,0)
       local d=age>=0 and math.exp(-age*5.5) or 0
-      e.w.Position=UDim2.new(.5,e.x,.5,-10-(age>=0 and math.abs(math.sin(age*12))*22*d or 0))
+      e.w.Position=UDim2.new(.5,e.x+(age>=0 and math.sin(age*50)*7*d or 0),.5,-10-(age>=0 and math.abs(math.sin(age*12))*22*d or 0))
       e.w.Rotation=age>=0 and math.sin(age*10)*7*d*(i%2==0 and 1 or -1) or 0
       e.us.Scale=1+(age>=0 and e.amp*math.exp(-age*8) or 0)
     end
@@ -909,6 +941,7 @@ G.ShoxOff=function()
   alive=false rec,play=false,false gen+=1
   G.ShoxH=nil
   G.ShoxAK=false
+  pcall(saveCfg)
   pcall(function() if introS then introS:Stop() introS:Destroy() end end)
   pcall(function() if introG then introG:Destroy() end end)
   pcall(alRun,false)
@@ -979,13 +1012,17 @@ for _,o in ipairs(pg:GetDescendants()) do hookBtn(o) end
 on(pg.DescendantAdded,hookBtn)
 
 -- Effekte pro Frame (Rahmen-Rotation, Titel-Glanz, Puls bei Record/Play) + Anzeige alle 0.5s
+-- Stats: Gesamtzeit laeuft live mit und wird alle 15 s gespeichert (bleibt auch bei Rejoin/Kick erhalten)
 local pulsers={{bRec,function() return rec end},{bPlay,function() return play end}}
-local ac2=0
+local ac2,rot,stSave=0,0,0
 on(RS.Heartbeat,function(dt)
   local c=os.clock()
-  mGrad.Rotation=(c*50)%360
+  rot=(rot+dt*((rec or play) and 140 or 50))%360
+  mGrad.Rotation=rot
   titleG.Offset=Vector2.new((c*0.5)%2-1,0)
+  divG.Offset=Vector2.new((c*0.4)%2-1,0)
   local a=(math.sin(c*5)+1)/2
+  titleS.Transparency=0.6+0.35*((math.sin(c*2)+1)/2)
   for _,p in ipairs(pulsers) do
     local sk=skm[p[1]]
     if p[2]() then
@@ -996,11 +1033,17 @@ on(RS.Heartbeat,function(dt)
       sk.Color=fLine(T) sk.Thickness=1 sk.Transparency=0.55
     end
   end
+  if play and runT0 then
+    cfg.st.time+=dt
+    stSave+=dt
+    if stSave>=15 then stSave=0 saveCfg() end
+  end
   ac2+=dt
   if ac2<0.5 then return end
   ac2=0
   if rec then bRec.Text=recTxt()
   elseif play and runT0 then
+    statsTxt()
     local lim=RUNS[cfg.runs]
     if waitEnd then stq("Run "..runI.." | waiting for Play Again...")
     else stq("Run "..runI..(lim>0 and ("/"..lim) or "").." | "..mmss(os.clock()-runT0).." / "..mmss(runTot)) end
@@ -1271,7 +1314,7 @@ local function startPlay()
       local took=runT0 and (os.clock()-runT0) or 0
       runT0=nil
       if not (play and gen==my) then break end
-      cfg.st.runs+=1 cfg.st.time+=took
+      cfg.st.runs+=1 cfg.st.rt+=took -- Gesamtzeit (st.time) zaehlt schon live im Heartbeat
       saveCfg() statsTxt()
       local e=0
       for _,l in ipairs(rlog) do if l.ok==false then e+=1 end end
@@ -1285,13 +1328,17 @@ local function startPlay()
 end
 on(bPlay.MouseButton1Click,function()
   if rec then return end
-  if play then play=false gen+=1 runT0=nil waitEnd=false st("Stopped") ui() return end
+  if play then play=false gen+=1 runT0=nil waitEnd=false saveCfg() statsTxt() st("Stopped") ui() return end
   startPlay()
 end)
 for i=1,5 do
   on(sb[i].MouseButton1Click,function()
     if rec or play then return end
     armRec=false slot=i cfg.slot=i saveCfg() loadSlot(i) optTxt()
+    -- kleiner Pop auf dem gewaehlten Slot
+    local sc=scl[sb[i]]
+    tw(sc,{Scale=1.12},.1)
+    task.delay(.1,function() tw(sc,{Scale=1},.4,Enum.EasingStyle.Back) end)
   end)
 end
 -- Auto-Play: an = spielt den gewaehlten Slot endlos und startet nach jedem Rejoin/Serverwechsel automatisch (per Auto-Execute)
@@ -1338,7 +1385,7 @@ on(nBox.FocusLost,function()
   st(t~="" and ("Slot "..slot.." named: "..t) or ("Slot "..slot.." name cleared"))
 end)
 confirm(bStR,"Reset Stats",function()
-  cfg.st={runs=0,time=0}
+  cfg.st={runs=0,time=0,rt=0}
   saveCfg() statsTxt()
   st("Stats reset")
 end)
