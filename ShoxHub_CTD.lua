@@ -1,4 +1,4 @@
--- Shox Hub | Cameraman TD | v7.16
+-- Shox Hub | Cameraman TD | v1.2
 pcall(function() getgenv().ShoxOff() end)
 local HS,UIS,TS,RS=game:GetService("HttpService"),game:GetService("UserInputService"),game:GetService("TweenService"),game:GetService("RunService")
 local lp=game:GetService("Players").LocalPlayer
@@ -59,22 +59,40 @@ local function mmss(x) x=math.floor(x) return string.format("%d:%02d",x//60,x%60
 local function isIn(i) return i.UserInputType==Enum.UserInputType.Touch or i.UserInputType==Enum.UserInputType.MouseButton1 end
 local function rname() local t={} for i=1,10 do t[i]=string.char(math.random(97,122)) end return table.concat(t) end
 
--- Anti-AFK (fest eingebaut): Idled-Verbindungen aus + VirtualUser-Klick + Mini-Sprung des Charakters alle ca. 25-35 s
--- (der Sprung ist echte Bewegung: faengt auch Spiele ab, die AFK ueber Charakter-Bewegung erkennen)
+-- Anti-AFK (fest eingebaut): Idled-Verbindungen aus + VirtualUser-Klick + echte Input-Events (Maus + Taste ueber VirtualInputManager)
+-- + Mini-Bewegung des Charakters (Sprung und kurzer Schritt hin und zurueck) alle ca. 18-28 s
 pcall(function() for _,c in pairs(getconnections(lp.Idled)) do c:Disable() end end)
 local VU=game:GetService("VirtualUser")
+local VIM
+pcall(function() VIM=game:GetService("VirtualInputManager") end)
 local function nudge()
   pcall(function() VU:CaptureController() VU:ClickButton2(Vector2.new()) end)
+  if VIM then
+    pcall(function()
+      local v=workspace.CurrentCamera.ViewportSize
+      VIM:SendMouseMoveEvent(v.X/2+math.random(-6,6),v.Y/2+math.random(-6,6),game)
+      VIM:SendKeyEvent(true,Enum.KeyCode.RightControl,false,game)
+      task.wait(0.05)
+      VIM:SendKeyEvent(false,Enum.KeyCode.RightControl,false,game)
+    end)
+  end
   pcall(function()
     local ch=lp.Character
     local h=ch and ch:FindFirstChildOfClass("Humanoid")
-    if h and h.Health>0 then h.Jump=true end
+    if h and h.Health>0 then
+      h.Jump=true
+      h:Move(Vector3.new(1,0,0),false)
+      task.wait(0.12)
+      h:Move(Vector3.new(-1,0,0),false)
+      task.wait(0.12)
+      h:Move(Vector3.new(0,0,0),false)
+    end
   end)
 end
 on(lp.Idled,nudge)
 task.spawn(function()
   while alive do
-    task.wait(25+math.random()*10)
+    task.wait(18+math.random()*10)
     if not alive then break end
     nudge()
   end
@@ -320,7 +338,7 @@ local mGrad=mk("UIGradient",{Rotation=0},mStroke)
 if type(cfg.pos)=="table" and #cfg.pos==4 then
   pcall(function() main.Position=UDim2.new(cfg.pos[1],cfg.pos[2],cfg.pos[3],cfg.pos[4]) end)
 end
-local hdr=mk("Frame",{Size=UDim2.new(1,-44,0,34),BackgroundTransparency=1},main)
+local hdr=mk("Frame",{Size=UDim2.new(1,-76,0,34),BackgroundTransparency=1},main)
 local title=mk("TextLabel",{Position=UDim2.fromOffset(12,0),Size=UDim2.new(1,-12,1,0),Text="Shox Hub",TextXAlignment=Enum.TextXAlignment.Left,BackgroundTransparency=1,Font=Enum.Font.GothamBlack,TextSize=17},hdr)
 reg(title,"TextColor3",fAcc)
 -- Glanz-Effekt ueber dem Titel (Titel bleibt immer gut lesbar) + weiches Leuchten
@@ -329,7 +347,7 @@ local titleS=mk("UIStroke",{Thickness=1.2,Transparency=0.85},title)
 reg(titleS,"Color",fAcc)
 local status=mk("TextLabel",{Position=UDim2.fromOffset(12,34),Size=UDim2.new(1,-24,0,18),Text="Ready | Anti-AFK on",TextXAlignment=Enum.TextXAlignment.Left,BackgroundTransparency=1,Font=Enum.Font.Gotham,TextSize=11,TextTruncate=Enum.TextTruncate.AtEnd},main)
 reg(status,"TextColor3",fSub)
-local dragH=mk("TextButton",{Size=UDim2.new(1,-44,0,56),BackgroundTransparency=1,Text="",AutoButtonColor=false,Active=true,ZIndex=2},main)
+local dragH=mk("TextButton",{Size=UDim2.new(1,-76,0,56),BackgroundTransparency=1,Text="",AutoButtonColor=false,Active=true,ZIndex=2},main)
 local div=mk("Frame",{Position=UDim2.fromOffset(12,56),Size=UDim2.new(1,-24,0,1),BorderSizePixel=0},main)
 reg(div,"BackgroundColor3",fAcc)
 -- wandernder Lichtstreifen auf der Trennlinie
@@ -397,12 +415,21 @@ mk("UICorner",{CornerRadius=UDim.new(0,9)},nBox)
 mk("UIPadding",{PaddingLeft=UDim.new(0,8),PaddingRight=UDim.new(0,8)},nBox)
 reg(nBox,"BackgroundColor3",fBtn) reg(nBox,"TextColor3",fBtxt) reg(nBox,"PlaceholderColor3",fSub)
 local function showName() nBox.Text=sname(slot) end
--- Copy Log: versteckt; 10 schnelle Taps auf den Header (Shox Hub) schalten ihn um (wird gespeichert)
+-- Versteckte Reihen (Copy Log, Export/Import): 10 schnelle Taps auf den Header (Shox Hub) schalten sie um (wird gespeichert)
 local cRow=row(28)
 local bCopy=btn(cRow,"Copy Log",1,1,function(t) return t.acc:Lerp(t.bg,0.4) end,fCtxt,12)
+local eRow=row(28)
+local bExp=btn(eRow,"Export Slot",1,2,function(t) return t.acc:Lerp(t.bg,0.4) end,fCtxt,12)
+local bImp=btn(eRow,"Import Slot",2,2,function(t) return t.acc:Lerp(t.bg,0.4) end,fCtxt,12)
+local pRow=row(28)
+local pBox=mk("TextBox",{Size=UDim2.new(1,0,1,0),Text="",PlaceholderText="Paste slot code here...",ClearTextOnFocus=true,Font=Enum.Font.GothamBold,TextSize=12,BorderSizePixel=0,TextTruncate=Enum.TextTruncate.AtEnd,TextXAlignment=Enum.TextXAlignment.Left},pRow)
+mk("UICorner",{CornerRadius=UDim.new(0,9)},pBox)
+mk("UIPadding",{PaddingLeft=UDim.new(0,8),PaddingRight=UDim.new(0,8)},pBox)
+reg(pBox,"BackgroundColor3",fBtn) reg(pBox,"TextColor3",fBtxt) reg(pBox,"PlaceholderColor3",fSub)
 local function showCopy()
   cRow.Visible=cfg.dev
-  cRow.Size=UDim2.new(1,0,0,cfg.dev and 28 or 0)
+  eRow.Visible=cfg.dev
+  pRow.Visible=cfg.dev
 end
 local dRow=row(28)
 local bDelCur=btn(dRow,"Delete Current",1,2,fDel,fCtxt,12)
@@ -514,7 +541,7 @@ on(UIS.InputEnded,function(i)
     dIn=nil
     local p=main.Position
     cfg.pos={p.X.Scale,p.X.Offset,p.Y.Scale,p.Y.Offset}
-    -- 10 schnelle Taps (kaum Bewegung, kurz gedrueckt) auf den Header: Copy Log ein/aus
+    -- 10 schnelle Taps (kaum Bewegung, kurz gedrueckt) auf den Header: versteckte Reihen ein/aus
     if (i.Position-dStart).Magnitude<12 and os.clock()-tapT<0.6 then
       if os.clock()-tapLast>1.5 then tapN=0 end
       tapLast=os.clock()
@@ -529,7 +556,7 @@ on(UIS.InputEnded,function(i)
   end
 end)
 pcall(function() on(workspace.CurrentCamera:GetPropertyChangedSignal("ViewportSize"),clampMain) end)
-local bMin=mk("TextButton",{Text="-",Position=UDim2.new(1,-36,0,5),Size=UDim2.fromOffset(26,24),Font=Enum.Font.GothamBold,TextSize=16,AutoButtonColor=false,BorderSizePixel=0},main)
+local bMin=mk("TextButton",{Text="-",Position=UDim2.new(1,-66,0,5),Size=UDim2.fromOffset(26,24),Font=Enum.Font.GothamBold,TextSize=16,AutoButtonColor=false,BorderSizePixel=0},main)
 mk("UICorner",{CornerRadius=UDim.new(0,8)},bMin)
 local minSc=mk("UIScale",{Scale=1},bMin)
 reg(bMin,"BackgroundColor3",fBtn) reg(bMin,"TextColor3",fBtxt)
@@ -541,6 +568,85 @@ on(bMin.MouseButton1Click,function()
   bMin.Text=mini and "+" or "-"
   tw(main,{Size=UDim2.fromOffset(220,mini and 34 or WIN_H)},.45,Enum.EasingStyle.Quint)
   task.delay(.5,clampMain)
+end)
+-- X-Button: schliesst das ganze Fenster, der Menu-Button (Quadrat, verschiebbar) oeffnet es wieder
+local bX=mk("TextButton",{Text="X",Position=UDim2.new(1,-36,0,5),Size=UDim2.fromOffset(26,24),Font=Enum.Font.GothamBold,TextSize=14,AutoButtonColor=false,BorderSizePixel=0},main)
+mk("UICorner",{CornerRadius=UDim.new(0,8)},bX)
+local xSc=mk("UIScale",{Scale=1},bX)
+reg(bX,"BackgroundColor3",fBtn) reg(bX,"TextColor3",fBtxt)
+on(bX.InputBegan,function(x) if isIn(x) then tw(xSc,{Scale=0.85},.08) end end)
+on(bX.InputEnded,function(x) if isIn(x) then tw(xSc,{Scale=1},.3,Enum.EasingStyle.Back) end end)
+local MB=40
+local mbtn=mk("TextButton",{Text="",Size=UDim2.fromOffset(MB,MB),Position=main.Position,AutoButtonColor=false,BorderSizePixel=0,Visible=false,Active=true,ZIndex=3},gui)
+if type(cfg.mpos)=="table" and #cfg.mpos==4 then
+  pcall(function() mbtn.Position=UDim2.new(cfg.mpos[1],cfg.mpos[2],cfg.mpos[3],cfg.mpos[4]) end)
+end
+mk("UICorner",{CornerRadius=UDim.new(0,10)},mbtn)
+reg(mbtn,"BackgroundColor3",fBg)
+local mbS=mk("UIStroke",{Thickness=2,Color=W,ApplyStrokeMode=Enum.ApplyStrokeMode.Border},mbtn)
+local mbGrad=mk("UIGradient",{Rotation=0},mbS)
+local mbSc=mk("UIScale",{Scale=1},mbtn)
+for n=0,2 do
+  local bar=mk("Frame",{AnchorPoint=Vector2.new(.5,.5),Position=UDim2.new(.5,0,.5,(n-1)*7),Size=UDim2.fromOffset(18,3),BorderSizePixel=0,ZIndex=4},mbtn)
+  mk("UICorner",{CornerRadius=UDim.new(1,0)},bar)
+  reg(bar,"BackgroundColor3",fAcc)
+end
+local function setOpen(open)
+  if open then
+    mbtn.Visible=false
+    main.Visible=true
+    main.Size=UDim2.fromOffset(220,0)
+    tw(main,{Size=UDim2.fromOffset(220,mini and 34 or WIN_H)},.45,Enum.EasingStyle.Back)
+    task.delay(.5,clampMain)
+  else
+    if not cfg.mpos then mbtn.Position=main.Position end
+    tw(main,{Size=UDim2.fromOffset(220,0)},.3)
+    task.delay(.32,function() if mbtn.Visible then main.Visible=false end end)
+    mbtn.Visible=true
+    mbSc.Scale=0
+    tw(mbSc,{Scale=1},.45,Enum.EasingStyle.Back)
+  end
+end
+on(bX.MouseButton1Click,function() setOpen(false) end)
+local mIn,mStart,mBase,mAbs,mLast,mMoved
+on(mbtn.InputBegan,function(i)
+  if isIn(i) then
+    mIn,mStart,mBase,mAbs,mLast,mMoved=i,i.Position,mbtn.Position,mbtn.AbsolutePosition,i.Position,false
+    tw(mbSc,{Scale=0.9},.08)
+  end
+end)
+on(UIS.InputChanged,function(i)
+  if not mIn then return end
+  if mIn.UserInputState==Enum.UserInputState.End or mIn.UserInputState==Enum.UserInputState.Cancel then
+    mIn=nil
+    tw(mbSc,{Scale=1},.3,Enum.EasingStyle.Back)
+    return
+  end
+  local ok=i==mIn or i.UserInputType==Enum.UserInputType.MouseMovement
+  if not ok and i.UserInputType==Enum.UserInputType.Touch and mIn.UserInputType==Enum.UserInputType.Touch and (i.Position-mLast).Magnitude<120 then ok=true end
+  if not ok then return end
+  mLast=i.Position
+  local d=i.Position-mStart
+  if d.Magnitude>8 then mMoved=true end
+  if not mMoved then return end
+  local v,minY,maxY=bnd()
+  local dx=math.clamp(mAbs.X+d.X,0,v.X-MB)-mAbs.X
+  local dy=math.clamp(mAbs.Y+d.Y,minY,maxY)-mAbs.Y
+  mbtn.Position=UDim2.new(mBase.X.Scale,mBase.X.Offset+dx,mBase.Y.Scale,mBase.Y.Offset+dy)
+end)
+on(UIS.InputEnded,function(i)
+  if mIn and isIn(i) and (i==mIn or i.UserInputType==mIn.UserInputType) then
+    local moved=mMoved
+    mIn=nil
+    tw(mbSc,{Scale=1},.3,Enum.EasingStyle.Back)
+    if moved then
+      local p=mbtn.Position
+      cfg.mpos={p.X.Scale,p.X.Offset,p.Y.Scale,p.Y.Offset}
+      saveCfg()
+    else
+      setOpen(true)
+    end
+  end
 end)
 
 -- Theme-Dropdown (gleitet auf/zu, Eintraege blenden gestaffelt ein)
@@ -588,6 +694,7 @@ applyTheme=function(name,quick)
   T,themeName=TM[name],name
   cfg.theme=name
   mGrad.Color=ColorSequence.new({ColorSequenceKeypoint.new(0,T.acc),ColorSequenceKeypoint.new(0.5,T.acc:Lerp(T.bg,0.75)),ColorSequenceKeypoint.new(1,T.acc)})
+  mbGrad.Color=mGrad.Color
   for _,e in ipairs(themed) do
     local v=e[3](T)
     if quick then e[1][e[2]]=v else tw(e[1],{[e[2]]=v},.4) end
@@ -603,69 +710,89 @@ end
 on(bTheme.MouseButton1Click,function() setDD(not ddOpen) end)
 
 local alRun
--- Anti-Lag (casual FPS boost, vollstaendig rueckgaengig machbar)
--- Aus: Partikel/Trails/Beams/Feuer/Rauch, Post-Effekte (Bloom, Blur, SunRays, DoF, ColorCorrection), Schatten, Reflexionen, Materialien -> SmoothPlastic, Qualitaet Level01, Terrain-Deko/Wellen
+-- Anti-Lag (FPS-Boost, vollstaendig rueckgaengig machbar)
+-- Aus: Partikel/Trails/Beams/Feuer/Rauch, Post-Effekte (Bloom, Blur, SunRays, DoF, ColorCorrection), Schatten (global + pro Part), Reflexionen, Terrain-Deko/Wellen.
+-- Ruckelfrei: Aenderungen laufen in einer Warteschlange mit festem Zeitbudget pro Frame (max. ca. 2 ms), nie alles auf einmal.
+-- Keine Materialwechsel und keine Qualitaetsstufe mehr (das hat das Spiel haengen lassen).
 local LS=game:GetService("Lighting")
-local AL={on=false,gen=0,orig=setmetatable({},{__mode="k"}),conn=nil,env=nil}
+local AL={on=false,orig=setmetatable({},{__mode="k"}),q={},qi=1,conn=nil,hb=nil,env=nil,rest={},ri=1}
 local FX={ParticleEmitter=true,Trail=true,Beam=true,Smoke=true,Fire=true,Sparkles=true,BloomEffect=true,BlurEffect=true,ColorCorrectionEffect=true,DepthOfFieldEffect=true,SunRaysEffect=true}
 local function alApply(x)
   if FX[x.ClassName] then
     if AL.orig[x]==nil then AL.orig[x]=x.Enabled end
     x.Enabled=false
-  elseif x:IsA("BasePart") and not x:IsA("Terrain") and x.Material~=Enum.Material.Neon then
-    if AL.orig[x]==nil then AL.orig[x]={x.Material,x.Reflectance,x.CastShadow} end
-    x.Material=Enum.Material.SmoothPlastic
-    x.Reflectance=0
-    x.CastShadow=false
+  elseif x:IsA("BasePart") and not x:IsA("Terrain") then
+    if x.CastShadow or x.Reflectance>0 then
+      if AL.orig[x]==nil then AL.orig[x]={x.Reflectance,x.CastShadow} end
+      x.Reflectance=0
+      x.CastShadow=false
+    end
   end
 end
+local function alStep(budget)
+  local t=os.clock()
+  local q=AL.q
+  while AL.qi<=#q do
+    local x=q[AL.qi]
+    q[AL.qi]=false
+    AL.qi+=1
+    if x and x.Parent then pcall(alApply,x) end
+    if os.clock()-t>budget then break end
+  end
+  if AL.qi>#q then AL.q={} AL.qi=1 end
+end
+local function alRestore(budget)
+  local t=os.clock()
+  local r=AL.rest
+  while AL.ri<=#r do
+    local e=r[AL.ri]
+    r[AL.ri]=false
+    AL.ri+=1
+    if e then
+      local x,v=e[1],e[2]
+      pcall(function()
+        if x.Parent then
+          if type(v)=="table" then x.Reflectance,x.CastShadow=v[1],v[2] else x.Enabled=v end
+        end
+      end)
+      AL.orig[x]=nil
+    end
+    if os.clock()-t>budget then break end
+  end
+  return AL.ri>#r
+end
 alRun=function(enable)
-  AL.gen+=1
-  local my=AL.gen
   AL.on=enable
+  if AL.hb then AL.hb:Disconnect() AL.hb=nil end
   if AL.conn then AL.conn:Disconnect() AL.conn=nil end
   if enable then
     if not AL.env then
       local e={gs=LS.GlobalShadows}
-      pcall(function() e.q=settings().Rendering.QualityLevel end)
       pcall(function() local t=workspace.Terrain e.dec,e.ww,e.ws=t.Decoration,t.WaterWaveSize,t.WaterWaveSpeed end)
       AL.env=e
     end
     pcall(function() LS.GlobalShadows=false end)
-    pcall(function() settings().Rendering.QualityLevel=Enum.QualityLevel.Level01 end)
     pcall(function() local t=workspace.Terrain t.Decoration=false t.WaterWaveSize=0 t.WaterWaveSpeed=0 end)
     for _,x in ipairs(LS:GetChildren()) do pcall(alApply,x) end
-    AL.conn=on(workspace.DescendantAdded,function(x) if AL.on then pcall(alApply,x) end end)
-    task.spawn(function()
-      local n=0
-      for _,x in ipairs(workspace:GetDescendants()) do
-        if AL.gen~=my then return end
-        pcall(alApply,x)
-        n+=1
-        if n%400==0 then task.wait() end
-      end
-    end)
+    AL.q=workspace:GetDescendants()
+    AL.qi=1
+    AL.conn=on(workspace.DescendantAdded,function(x) AL.q[#AL.q+1]=x end)
+    AL.hb=on(RS.Heartbeat,function() alStep(0.002) end)
   else
     local e=AL.env
     if e then
       AL.env=nil
       pcall(function() LS.GlobalShadows=e.gs end)
-      pcall(function() if e.q then settings().Rendering.QualityLevel=e.q end end)
       pcall(function() local t=workspace.Terrain t.Decoration,t.WaterWaveSize,t.WaterWaveSpeed=e.dec,e.ww,e.ws end)
     end
     local list={}
     for x,v in pairs(AL.orig) do list[#list+1]={x,v} end
-    task.spawn(function()
-      for i,e2 in ipairs(list) do
-        if AL.gen~=my then return end
-        local x,v=e2[1],e2[2]
-        pcall(function()
-          if x.Parent then
-            if type(v)=="table" then x.Material,x.Reflectance,x.CastShadow=v[1],v[2],v[3] else x.Enabled=v end
-          end
-        end)
-        AL.orig[x]=nil
-        if i%400==0 then task.wait() end
+    AL.rest,AL.ri=list,1
+    AL.q,AL.qi={},1
+    AL.hb=on(RS.Heartbeat,function()
+      if alRestore(0.002) and AL.hb then
+        AL.hb:Disconnect()
+        AL.hb=nil
       end
     end)
   end
@@ -717,7 +844,6 @@ end
 
 -- Beat-Intro: Zeitplan in Sekunden ab Songstart (abgestimmt auf die 5,06-s-Intro-Datei)
 -- {Zeit, Staerke, Art}: a = SHOX knallt rein, b = HUB knallt rein, drop = Drop, end = Finale
--- Effekte: Screen-Shake, Kamera-Kick (Tilt), RGB-Split, Zoom-Puls, Ringe, Funken, Speed-Streaks, Flash
 local LET={"S","H","O","X","H","U","B"}
 local BEATS={{0.05,1,"a"},{0.52,1,"b"},{0.84,0.6},{1.28,0.9},{1.58,0.5},{1.88,0.9},{2.11,0.6},{2.48,2.2,"drop"},{3.15,1},{3.74,1},{4.34,1.2},{4.75,1.7,"end"}}
 local FADE0,FADE1=4.95,5.5
@@ -735,13 +861,8 @@ local function introFx(snd)
     local x=-163+(i-1)*50+(i>=5 and 26 or 0)
     local w=mk("Frame",{AnchorPoint=Vector2.new(.5,.5),Position=UDim2.new(.5,x,.5,-10),Size=UDim2.fromOffset(50,80),BackgroundTransparency=1,BorderSizePixel=0},stage)
     local us=mk("UIScale",{Scale=1},w)
-    local function lab(col,z)
-      return mk("TextLabel",{Size=UDim2.fromScale(1,1),BackgroundTransparency=1,Text=ch,Font=Enum.Font.GothamBlack,TextSize=76,TextColor3=col,TextTransparency=1,ZIndex=z},w)
-    end
-    local gr=lab(C(255,40,70),1)
-    local gc=lab(C(40,220,255),1)
-    local lb=lab(T.acc,2)
-    L[i]={w=w,us=us,lb=lb,gr=gr,gc=gc,x=x,hit=-10,amp=0,rev=math.huge}
+    local lb=mk("TextLabel",{Size=UDim2.fromScale(1,1),BackgroundTransparency=1,Text=ch,Font=Enum.Font.GothamBlack,TextSize=76,TextColor3=T.acc,TextTransparency=1},w)
+    L[i]={w=w,us=us,lb=lb,x=x,hit=-10,amp=0,rev=math.huge}
   end
   local line=mk("Frame",{AnchorPoint=Vector2.new(.5,.5),Position=UDim2.new(.5,0,.5,52),Size=UDim2.fromOffset(0,4),BackgroundColor3=T.acc,BorderSizePixel=0},stage)
   local sub=mk("TextLabel",{AnchorPoint=Vector2.new(.5,.5),Position=UDim2.new(.5,0,.5,80),Size=UDim2.fromOffset(376,22),BackgroundTransparency=1,Text=DISCORD,Font=Enum.Font.GothamBold,TextSize=17,TextColor3=T.sub,TextTransparency=1},stage)
@@ -758,19 +879,9 @@ local function introFx(snd)
       local a=math.random()*math.pi*2
       local d=(wide and 260 or 130)*(0.4+math.random()*0.8)
       local sx=L[math.random(1,#L)].x
-      local p=mk("Frame",{AnchorPoint=Vector2.new(.5,.5),Position=UDim2.new(.5,sx,.5,-10),Size=UDim2.fromOffset(16,3),Rotation=math.deg(a),BackgroundColor3=T.acc,BorderSizePixel=0},stage)
-      tw(p,{Position=UDim2.new(.5,sx+math.cos(a)*d,.5,-10+math.sin(a)*d),BackgroundTransparency=1,Size=UDim2.fromOffset(3,2)},0.55)
+      local p=mk("Frame",{AnchorPoint=Vector2.new(.5,.5),Position=UDim2.new(.5,sx,.5,-10),Size=UDim2.fromOffset(6,6),Rotation=math.random(0,90),BackgroundColor3=T.acc,BorderSizePixel=0},stage)
+      tw(p,{Position=UDim2.new(.5,sx+math.cos(a)*d,.5,-10+math.sin(a)*d),BackgroundTransparency=1,Size=UDim2.fromOffset(2,2)},0.55)
       task.delay(0.6,function() p:Destroy() end)
-    end
-  end
-  local function streaks(n)
-    for _=1,n do
-      local a=math.random()*math.pi*2
-      local r0=90+math.random()*60
-      local r1=r0+300+math.random()*260
-      local p=mk("Frame",{AnchorPoint=Vector2.new(.5,.5),Position=UDim2.new(.5,math.cos(a)*r0,.5,-10+math.sin(a)*r0),Size=UDim2.fromOffset(80+math.random()*80,3),Rotation=math.deg(a),BackgroundColor3=T.acc,BorderSizePixel=0},stage)
-      tw(p,{Position=UDim2.new(.5,math.cos(a)*r1,.5,-10+math.sin(a)*r1),BackgroundTransparency=1},0.45)
-      task.delay(0.5,function() p:Destroy() end)
     end
   end
   local function ring(th)
@@ -781,7 +892,7 @@ local function introFx(snd)
     tw(sk,{Transparency=1},0.7)
     task.delay(0.8,function() r:Destroy() end)
   end
-  local tl,bi,pulse,shake,flashA,ul,subA,ab,tilt=0,1,0,0,0,0,0,0,0
+  local tl,bi,pulse,shake,flashA,ul,subA=0,1,0,0,0,0,0
   local done,hb=false,nil
   local function finish(stop)
     if done then return end
@@ -797,11 +908,9 @@ local function introFx(snd)
   on(skip.MouseButton1Click,function() finish(true) end)
   local function fire(b)
     local s,kind=b[2],b[3]
-    pulse=math.max(pulse,0.07+0.08*s)
-    shake=math.max(shake,8*s)
-    flashA=math.max(flashA,math.min(0.12*s,0.4))
-    ab=math.max(ab,7*s)
-    tilt=(bi%2==0 and 1 or -1)*1.4*s
+    pulse=math.max(pulse,0.05+0.06*s)
+    shake=math.max(shake,6*s)
+    flashA=math.max(flashA,math.min(0.1*s,0.35))
     local a,z,amp=1,#L,0.3*s
     if kind=="a" then a,z,amp=1,4,1.6 elseif kind=="b" then a,z,amp=5,7,1.6 end
     for i=a,z do
@@ -811,15 +920,14 @@ local function introFx(snd)
       if amp>1 then e.rev=e.hit end
     end
     if kind=="drop" then
-      pulse=0.45 shake=36 flashA=0.85 ab=46 tilt=5
-      ring(6) task.delay(0.12,function() ring(3) end) task.delay(0.24,function() ring(2) end)
-      spark(30,true) streaks(22)
+      pulse=0.35 shake=26 flashA=0.75
+      ring(6) task.delay(0.12,function() ring(3) end)
+      spark(24,true)
     elseif kind=="end" then
-      pulse=0.38 shake=28 flashA=0.7 ab=34 tilt=-4
-      ring(5) spark(22,true) streaks(16)
+      pulse=0.3 shake=20 flashA=0.6
+      ring(5) spark(18,true)
     else
       spark(math.floor(4*s)+2,false)
-      if s>=1 then streaks(math.floor(3*s)) end
     end
   end
   hb=on(RS.Heartbeat,function(dt)
@@ -827,26 +935,18 @@ local function introFx(snd)
     if snd.IsPlaying then tl=snd.TimePosition else tl+=dt end
     while BEATS[bi] and tl>=BEATS[bi][1] do fire(BEATS[bi]) bi+=1 end
     local f=math.clamp((tl-FADE0)/(FADE1-FADE0),0,1)
-    pulse*=math.exp(-dt*7) shake*=math.exp(-dt*9) flashA*=math.exp(-dt*8) ab*=math.exp(-dt*9) tilt*=math.exp(-dt*8)
+    pulse*=math.exp(-dt*7) shake*=math.exp(-dt*9) flashA*=math.exp(-dt*8)
     local sh=shake>0.3 and shake or 0
     stage.Position=UDim2.new(.5,(math.random()-.5)*2*sh,.5,(math.random()-.5)*2*sh)
-    stage.Rotation=(math.random()-.5)*0.3*sh+tilt
+    stage.Rotation=(math.random()-.5)*0.3*sh
     sc.Scale=base*(1+pulse)*(1+f*0.5)
     fl.BackgroundTransparency=1-flashA
     bg.BackgroundTransparency=f
-    bg.BackgroundColor3=T.bg:Lerp(T.acc,math.min(flashA*0.35,0.3))
     for i,e in ipairs(L) do
       local age=tl-e.hit
-      local tr=(tl>=e.rev) and f or 1
-      e.lb.TextTransparency=tr
-      local gt=(tr<1 and ab>0.5) and math.max(tr,0.5) or 1
-      e.gr.TextTransparency=gt
-      e.gc.TextTransparency=gt
-      local gx=ab*(0.6+0.4*math.random())
-      e.gr.Position=UDim2.fromOffset(-gx,0)
-      e.gc.Position=UDim2.fromOffset(gx,0)
+      e.lb.TextTransparency=(tl>=e.rev) and f or 1
       local d=age>=0 and math.exp(-age*5.5) or 0
-      e.w.Position=UDim2.new(.5,e.x+(age>=0 and math.sin(age*50)*7*d or 0),.5,-10-(age>=0 and math.abs(math.sin(age*12))*22*d or 0))
+      e.w.Position=UDim2.new(.5,e.x,.5,-10-(age>=0 and math.abs(math.sin(age*12))*22*d or 0))
       e.w.Rotation=age>=0 and math.sin(age*10)*7*d*(i%2==0 and 1 or -1) or 0
       e.us.Scale=1+(age>=0 and e.amp*math.exp(-age*8) or 0)
     end
@@ -945,6 +1045,7 @@ G.ShoxOff=function()
   pcall(function() if introS then introS:Stop() introS:Destroy() end end)
   pcall(function() if introG then introG:Destroy() end end)
   pcall(alRun,false)
+  pcall(alRestore,1e9)
   for _,c in ipairs(conns) do pcall(function() c:Disconnect() end) end
   gui:Destroy()
 end
@@ -1019,6 +1120,7 @@ on(RS.Heartbeat,function(dt)
   local c=os.clock()
   rot=(rot+dt*((rec or play) and 140 or 50))%360
   mGrad.Rotation=rot
+  mbGrad.Rotation=rot
   titleG.Offset=Vector2.new((c*0.5)%2-1,0)
   divG.Offset=Vector2.new((c*0.4)%2-1,0)
   local a=(math.sin(c*5)+1)/2
@@ -1361,6 +1463,48 @@ on(bCopy.MouseButton1Click,function()
   local my=copyTok
   bCopy.Text=ok and "Copied!" or "Error"
   task.delay(1.2,function() if copyTok==my then bCopy.Text="Copy Log" end end)
+end)
+-- Export: aktuellen Slot als Text in die Zwischenablage (zusaetzlich als Datei ShoxHub/export_slotN.txt)
+local expTok=0
+on(bExp.MouseButton1Click,function()
+  if rec then return st("Stop recording first") end
+  if #steps==0 then return st("Slot "..slot.." is empty") end
+  local okj,js=pcall(function() return HS:JSONEncode(steps) end)
+  if not okj then return st("Export failed") end
+  local ok=pcall(setclipboard,js)
+  pcall(writefile,DIR.."/export_slot"..slot..".txt",js)
+  st(ok and ("Slot "..slot.." exported (copied)") or "Copy not possible")
+  expTok+=1
+  local my=expTok
+  bExp.Text=ok and "Copied!" or "Error"
+  task.delay(1.2,function() if expTok==my then bExp.Text="Export Slot" end end)
+end)
+-- Import: Code aus dem Textfeld (oder Datei ShoxHub/import.txt, wenn das Feld leer ist) in den gewaehlten Slot
+confirm(bImp,"Import Slot",function()
+  if rec or play then return st("Stop first") end
+  local txt=pBox.Text or ""
+  txt=txt:gsub("^%s+",""):gsub("%s+$","")
+  if txt=="" then
+    local okf,d=pcall(readfile,DIR.."/import.txt")
+    if okf and type(d)=="string" then txt=d end
+  end
+  if txt=="" then return st("Paste a slot code first") end
+  local ok,r=pcall(function() return HS:JSONDecode(txt) end)
+  local new={}
+  if ok and type(r)=="table" then
+    for _,s in ipairs(r) do
+      if #new>=15000 then break end
+      if type(s)=="table" and (s.k=="R" or s.k=="B") and type(s.p)=="table" and type(s.t)=="number" and type(s.n)=="number" and type(s.a)=="table" and type(s.m)=="string" then
+        new[#new+1]=s
+      end
+    end
+  end
+  if #new==0 then return st("Import failed: invalid code") end
+  local okw=pcall(writefile,file(slot),HS:JSONEncode(new))
+  if not okw then return st("Import failed: cannot save") end
+  pBox.Text=""
+  loadSlot(slot)
+  st("Slot "..slot.." imported: "..stats())
 end)
 local discTok=0
 on(bDisc.MouseButton1Click,function()
