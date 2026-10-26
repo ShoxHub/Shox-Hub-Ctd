@@ -1,4 +1,4 @@
--- Shox Hub | Cameraman TD Macro Recorder + Beat-Intro | v7.15
+-- Shox Hub | Cameraman TD Macro Recorder + Beat-Intro | v7.16
 pcall(function() getgenv().ShoxOff() end)
 local HS,UIS,TS,RS=game:GetService("HttpService"),game:GetService("UserInputService"),game:GetService("TweenService"),game:GetService("RunService")
 local lp=game:GetService("Players").LocalPlayer
@@ -712,6 +712,7 @@ end
 
 -- Beat-Intro: Zeitplan in Sekunden ab Songstart (abgestimmt auf die 5,06-s-Intro-Datei)
 -- {Zeit, Staerke, Art}: a = SHOX knallt rein, b = HUB knallt rein, drop = Drop, end = Finale
+-- v7.16: Kamera-Look (Sucher-Ecken, REC-Timecode), Sternenstaub, Equalizer, Glitch-Geisterbuchstaben, Leuchtrand, Tagline
 local LET={"S","H","O","X","H","U","B"}
 local BEATS={{0.05,1,"a"},{0.52,1,"b"},{0.84,0.6},{1.28,0.9},{1.58,0.5},{1.88,0.9},{2.11,0.6},{2.48,2.2,"drop"},{3.15,1},{3.74,1},{4.34,1.2},{4.75,1.7,"end"}}
 local FADE0,FADE1=4.95,5.5
@@ -722,6 +723,14 @@ local function introFx(snd)
   local vp=workspace.CurrentCamera.ViewportSize
   local base=math.clamp(math.min(vp.X*0.6/376,vp.Y*0.4/80),0.5,3)
   local bg=mk("Frame",{Size=UDim2.fromScale(1,1),BackgroundColor3=T.bg,BorderSizePixel=0},ig)
+  -- Sternenstaub (zieht nach oben, wird bei Beats schneller)
+  local stars={}
+  for i=1,26 do
+    local sz=math.random(2,4)
+    local s=mk("Frame",{Size=UDim2.fromOffset(sz,sz),BackgroundColor3=T.acc,BackgroundTransparency=1,BorderSizePixel=0},ig)
+    mk("UICorner",{CornerRadius=UDim.new(1,0)},s)
+    stars[i]={f=s,x=math.random(),y=math.random(),v=0.02+math.random()*0.05,a=0.55+math.random()*0.35}
+  end
   local stage=mk("Frame",{AnchorPoint=Vector2.new(.5,.5),Position=UDim2.fromScale(.5,.5),Size=UDim2.fromScale(1,1),BackgroundTransparency=1,BorderSizePixel=0},ig)
   local sc=mk("UIScale",{Scale=base},stage)
   local L={}
@@ -729,12 +738,36 @@ local function introFx(snd)
     local x=-163+(i-1)*50+(i>=5 and 26 or 0)
     local w=mk("Frame",{AnchorPoint=Vector2.new(.5,.5),Position=UDim2.new(.5,x,.5,-10),Size=UDim2.fromOffset(50,80),BackgroundTransparency=1,BorderSizePixel=0},stage)
     local us=mk("UIScale",{Scale=1},w)
-    local lb=mk("TextLabel",{Size=UDim2.fromScale(1,1),BackgroundTransparency=1,Text=ch,Font=Enum.Font.GothamBlack,TextSize=76,TextColor3=T.acc,TextTransparency=1},w)
-    L[i]={w=w,us=us,lb=lb,x=x,hit=-10,amp=0,rev=math.huge}
+    -- Geister-Buchstaben (rot/cyan) fuer den Glitch-Effekt bei Beats, liegen unter dem echten Buchstaben
+    local g1=mk("TextLabel",{Size=UDim2.fromScale(1,1),BackgroundTransparency=1,Text=ch,Font=Enum.Font.GothamBlack,TextSize=76,TextColor3=Color3.fromRGB(255,60,90),TextTransparency=1,ZIndex=1},w)
+    local g2=mk("TextLabel",{Size=UDim2.fromScale(1,1),BackgroundTransparency=1,Text=ch,Font=Enum.Font.GothamBlack,TextSize=76,TextColor3=Color3.fromRGB(60,220,255),TextTransparency=1,ZIndex=1},w)
+    local lb=mk("TextLabel",{Size=UDim2.fromScale(1,1),BackgroundTransparency=1,Text=ch,Font=Enum.Font.GothamBlack,TextSize=76,TextColor3=T.acc,TextTransparency=1,ZIndex=2},w)
+    local gk=mk("UIStroke",{Thickness=0,Color=T.acc,Transparency=1},lb)
+    L[i]={w=w,us=us,lb=lb,g1=g1,g2=g2,sk=gk,x=x,hit=-10,amp=0,rev=math.huge}
   end
   local line=mk("Frame",{AnchorPoint=Vector2.new(.5,.5),Position=UDim2.new(.5,0,.5,52),Size=UDim2.fromOffset(0,4),BackgroundColor3=T.acc,BorderSizePixel=0},stage)
   local sub=mk("TextLabel",{AnchorPoint=Vector2.new(.5,.5),Position=UDim2.new(.5,0,.5,80),Size=UDim2.fromOffset(376,22),BackgroundTransparency=1,Text=DISCORD,Font=Enum.Font.GothamBold,TextSize=17,TextColor3=T.sub,TextTransparency=1},stage)
+  local tag=mk("TextLabel",{AnchorPoint=Vector2.new(.5,.5),Position=UDim2.new(.5,0,.5,108),Size=UDim2.fromOffset(376,18),BackgroundTransparency=1,Text="C A M E R A M A N   T D   M A C R O",Font=Enum.Font.GothamBold,TextSize=11,TextColor3=T.sub,TextTransparency=1},stage)
   local fl=mk("Frame",{Size=UDim2.fromScale(1,1),BackgroundColor3=T.acc,BackgroundTransparency=1,BorderSizePixel=0,ZIndex=5},ig)
+  -- Sucher-Ecken (Kamera-Look) + REC-Anzeige mit Timecode
+  local vfc={}
+  local function corner(ax,ay)
+    local c=mk("Frame",{AnchorPoint=Vector2.new(ax,ay),BackgroundTransparency=1,BorderSizePixel=0,Size=UDim2.fromOffset(34,34),ZIndex=4},ig)
+    local h=mk("Frame",{AnchorPoint=Vector2.new(ax,ay),Position=UDim2.fromScale(ax,ay),Size=UDim2.fromOffset(34,3),BackgroundColor3=T.acc,BackgroundTransparency=1,BorderSizePixel=0,ZIndex=4},c)
+    local v=mk("Frame",{AnchorPoint=Vector2.new(ax,ay),Position=UDim2.fromScale(ax,ay),Size=UDim2.fromOffset(3,34),BackgroundColor3=T.acc,BackgroundTransparency=1,BorderSizePixel=0,ZIndex=4},c)
+    vfc[#vfc+1]={c=c,h=h,v=v,ax=ax,ay=ay}
+  end
+  corner(0,0) corner(1,0) corner(0,1) corner(1,1)
+  local rc=mk("TextLabel",{Position=UDim2.fromOffset(122,66),Size=UDim2.fromOffset(170,18),BackgroundTransparency=1,Text="",Font=Enum.Font.GothamBold,TextSize=13,TextColor3=T.sub,TextXAlignment=Enum.TextXAlignment.Left,TextTransparency=1,ZIndex=4},ig)
+  local rd=mk("Frame",{Position=UDim2.fromOffset(104,70),Size=UDim2.fromOffset(10,10),BackgroundColor3=Color3.fromRGB(255,60,60),BackgroundTransparency=1,BorderSizePixel=0,ZIndex=4},ig)
+  mk("UICorner",{CornerRadius=UDim.new(1,0)},rd)
+  -- Equalizer unten (reagiert auf die Beats)
+  local eq={}
+  for i=1,23 do
+    local b=mk("Frame",{AnchorPoint=Vector2.new(.5,1),Position=UDim2.new(.5,(i-12)*14,1,-24),Size=UDim2.fromOffset(6,4),BackgroundColor3=T.acc,BackgroundTransparency=1,BorderSizePixel=0,ZIndex=3},ig)
+    mk("UICorner",{CornerRadius=UDim.new(1,0)},b)
+    eq[i]={f=b,h=4,ph=math.random()*6.28}
+  end
   -- Skip-Button oben rechts (Theme-Look wie die Buttons im Hub)
   local skip=mk("TextButton",{AnchorPoint=Vector2.new(1,0),Position=UDim2.new(1,-14,0,14),Size=UDim2.fromOffset(78,32),BackgroundColor3=T.btn,Text="Skip",TextColor3=T.btxt,Font=Enum.Font.GothamBold,TextSize=14,AutoButtonColor=false,BorderSizePixel=0,ZIndex=10},ig)
   mk("UICorner",{CornerRadius=UDim.new(0,9)},skip)
@@ -748,6 +781,7 @@ local function introFx(snd)
       local d=(wide and 260 or 130)*(0.4+math.random()*0.8)
       local sx=L[math.random(1,#L)].x
       local p=mk("Frame",{AnchorPoint=Vector2.new(.5,.5),Position=UDim2.new(.5,sx,.5,-10),Size=UDim2.fromOffset(6,6),Rotation=math.random(0,90),BackgroundColor3=T.acc,BorderSizePixel=0},stage)
+      if math.random()<0.5 then mk("UICorner",{CornerRadius=UDim.new(1,0)},p) end
       tw(p,{Position=UDim2.new(.5,sx+math.cos(a)*d,.5,-10+math.sin(a)*d),BackgroundTransparency=1,Size=UDim2.fromOffset(2,2)},0.55)
       task.delay(0.6,function() p:Destroy() end)
     end
@@ -761,6 +795,7 @@ local function introFx(snd)
     task.delay(0.8,function() r:Destroy() end)
   end
   local tl,bi,pulse,shake,flashA,ul,subA=0,1,0,0,0,0,0
+  local vf,tg=0,0
   local done,hb=false,nil
   local function finish(stop)
     if done then return end
@@ -796,6 +831,7 @@ local function introFx(snd)
       ring(5) spark(18,true)
     else
       spark(math.floor(4*s)+2,false)
+      if kind=="a" or kind=="b" then ring(2) end
     end
   end
   hb=on(RS.Heartbeat,function(dt)
@@ -817,12 +853,48 @@ local function introFx(snd)
       e.w.Position=UDim2.new(.5,e.x,.5,-10-(age>=0 and math.abs(math.sin(age*12))*22*d or 0))
       e.w.Rotation=age>=0 and math.sin(age*10)*7*d*(i%2==0 and 1 or -1) or 0
       e.us.Scale=1+(age>=0 and e.amp*math.exp(-age*8) or 0)
+      -- Glitch-Geister + Leuchtrand
+      local lt=e.lb.TextTransparency
+      local gt=math.max(lt,math.clamp(1-shake/9,0.4,1))
+      local off=math.clamp(shake*0.4,0,10)
+      e.g1.TextTransparency=gt e.g2.TextTransparency=gt
+      e.g1.Position=UDim2.fromOffset(-off,0) e.g2.Position=UDim2.fromOffset(off,0)
+      e.sk.Thickness=d*3 e.sk.Transparency=math.max(lt,0.5)
     end
     if tl>=0.84 then ul=math.min(1,ul+dt*3.5) end
     line.Size=UDim2.fromOffset(376*ul,4)
     line.BackgroundTransparency=f
     if tl>=3.15 then subA=math.min(1,subA+dt*5) end
     sub.TextTransparency=math.max(1-subA,f)
+    if tl>=1.58 then tg=math.min(1,tg+dt*3) end
+    tag.TextTransparency=math.max(1-tg,f)
+    -- Sternenstaub
+    for _,s in ipairs(stars) do
+      s.y-=s.v*dt*(1+pulse*10)
+      if s.y<-0.05 then s.y=1.05 s.x=math.random() end
+      s.f.Position=UDim2.fromScale(s.x,s.y)
+      s.f.BackgroundTransparency=math.max(f,1-s.a*math.min(1,tl*2))
+    end
+    -- Sucher-Ecken + REC-Timecode
+    if tl>=0.2 then vf=math.min(1,vf+dt*2.2) end
+    local vm=60+(1-vf)*(1-vf)*50
+    local vt=math.max(f,1-vf)
+    for _,c in ipairs(vfc) do
+      c.c.Position=UDim2.new(c.ax,(c.ax==0 and 1 or -1)*vm,c.ay,(c.ay==0 and 1 or -1)*vm)
+      c.h.BackgroundTransparency=vt
+      c.v.BackgroundTransparency=vt
+    end
+    rc.Text=string.format("REC  00:%02d:%02d",math.floor(tl)%60,math.floor(tl*30)%30)
+    rc.TextTransparency=vt
+    rd.BackgroundTransparency=(math.floor(tl*2)%2==0) and vt or 1
+    -- Equalizer
+    local en=math.clamp(pulse*3+shake/30,0,1.4)
+    for i,e in ipairs(eq) do
+      local tgt=4+(0.35+0.65*math.abs(math.sin(tl*7+e.ph)))*en*130*(1-math.abs(i-12)/16)
+      e.h+=(tgt-e.h)*math.min(1,dt*18)
+      e.f.Size=UDim2.fromOffset(6,math.max(4,e.h))
+      e.f.BackgroundTransparency=math.max(f,0.4+0.5*(1-math.min(1,en)))
+    end
     skip.BackgroundTransparency=f
     skip.TextTransparency=f
     skS.Transparency=math.max(0.55,f)
@@ -1348,6 +1420,52 @@ confirm(bDelSlot,"Delete Slot",function()
   steps={} filled[slot]=false
   st("Slot "..slot.." deleted") ui()
 end)
+
+-- Hub-Extras v7.16 (nur Optik, in do-Block damit keine neuen Top-Level-Variablen entstehen):
+-- Fortschrittsbalken fuer den laufenden Run, REC/Play-Punkt im Header, Schimmer auf der Trennlinie, schwebender Staub im Fenster
+do
+  local pbg=mk("Frame",{Position=UDim2.fromOffset(12,54),Size=UDim2.new(1,-24,0,3),BackgroundTransparency=1,BorderSizePixel=0,ZIndex=3},main)
+  mk("UICorner",{CornerRadius=UDim.new(1,0)},pbg)
+  local pbar=mk("Frame",{Size=UDim2.new(0,0,1,0),BorderSizePixel=0,BackgroundTransparency=1,ZIndex=3},pbg)
+  mk("UICorner",{CornerRadius=UDim.new(1,0)},pbar)
+  reg(pbar,"BackgroundColor3",fAcc)
+  local dot=mk("Frame",{Position=UDim2.new(1,-54,0,12),Size=UDim2.fromOffset(10,10),BackgroundTransparency=1,BorderSizePixel=0,ZIndex=3},main)
+  mk("UICorner",{CornerRadius=UDim.new(1,0)},dot)
+  local shm=mk("Frame",{Position=UDim2.fromOffset(-60,55),Size=UDim2.fromOffset(60,2),BorderSizePixel=0,ZIndex=3},main)
+  reg(shm,"BackgroundColor3",fAcc)
+  mk("UIGradient",{Transparency=NumberSequence.new({NumberSequenceKeypoint.new(0,1),NumberSequenceKeypoint.new(0.5,0.1),NumberSequenceKeypoint.new(1,1)})},shm)
+  local dust={}
+  for i=1,9 do
+    local sz=math.random(2,3)
+    local p=mk("Frame",{Size=UDim2.fromOffset(sz,sz),BorderSizePixel=0,BackgroundTransparency=0.88,ZIndex=0},main)
+    mk("UICorner",{CornerRadius=UDim.new(1,0)},p)
+    reg(p,"BackgroundColor3",fAcc)
+    dust[i]={p=p,x=math.random(),y=math.random(),v=0.01+math.random()*0.025,w=math.random()*6.28}
+  end
+  on(RS.Heartbeat,function(dt)
+    local c=os.clock()
+    for _,d in ipairs(dust) do
+      d.y-=d.v*dt
+      if d.y<-0.05 then d.y=1.05 d.x=math.random() end
+      d.p.Position=UDim2.new(d.x+math.sin(c*0.6+d.w)*0.02,0,d.y,0)
+    end
+    shm.Position=UDim2.fromOffset(-60+((c%3.5)/3.5)*280,55)
+    if rec or play then
+      local a=(math.sin(c*6)+1)/2
+      dot.BackgroundColor3=rec and Color3.fromRGB(255,60,60) or Color3.fromRGB(70,220,120)
+      dot.BackgroundTransparency=0.55*(1-a)
+    else
+      dot.BackgroundTransparency=1
+    end
+    if play and runT0 and runTot>0 then
+      pbar.BackgroundTransparency=0
+      pbar.Size=UDim2.new(math.clamp((os.clock()-runT0)/runTot,0,1),0,1,0)
+    else
+      pbar.BackgroundTransparency=1
+      pbar.Size=UDim2.new(0,0,1,0)
+    end
+  end)
+end
 
 -- Start
 for n=1,5 do
