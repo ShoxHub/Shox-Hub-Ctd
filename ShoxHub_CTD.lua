@@ -1,4 +1,4 @@
--- Shox Hub | Cameraman TD | v1.2
+-- Shox Hub | Cameraman TD | v1.3
 pcall(function() getgenv().ShoxOff() end)
 local HS,UIS,TS,RS=game:GetService("HttpService"),game:GetService("UserInputService"),game:GetService("TweenService"),game:GetService("RunService")
 local lp=game:GetService("Players").LocalPlayer
@@ -10,15 +10,15 @@ pcall(makefolder,DIR)
 pcall(makefolder,MDIR)
 -- Intro-Song wird beim ersten Start automatisch geladen und in ShoxHub/music/ gespeichert (nur einmal, danach lokal).
 -- INTRO_URL: GitHub raw (intro.ogg im Repo-Root). INTRO_URL2: Reserve (catbox liefert in Delta teils leere Antworten).
-local INTRO_URL="https://raw.githubusercontent.com/ShoxHub/Shox-Hub-Ctd/main/intro.ogg"
-local INTRO_URL2="https://files.catbox.moe/j5p4sg.ogg"
-local IGNORE={} -- nie aufnehmen: IGNORE["RemoteName"]=true
-local SKIPB={"towerui","slots","jumpbutton"} -- beim Abspielen ueberspringen
-local DEDUP=0.05
-local ADD="TowerAdd"
-local USE={TowerUpgrade=true,TowerSell=true}
-local NEAR=12
-local GP="^%x+%-%x+%-%x+%-%x+%-%x+$"
+local K={
+  IGNORE={}, -- nie aufnehmen: K.IGNORE["RemoteName"]=true
+  SKIPB={"towerui","slots","jumpbutton"}, -- beim Abspielen ueberspringen
+  DEDUP=0.05,
+  ADD="TowerAdd",
+  USE={TowerUpgrade=true,TowerSell=true},
+  NEAR=12,
+  GP="^%x+%-%x+%-%x+%-%x+%-%x+$"
+}
 local RUNS,SCALES,SNAME,TRANS={0},{0.85,1,1.2},{"S","M","L"},{0,0.2,0.4} -- RUNS={0}: immer Endless
 local cfg={theme="Black",runs=1,scale=2,trans=1,intro=true,lag=false,slot=1,ap=false,dev=false,names={},st={runs=0,time=0,rt=0}}
 do
@@ -240,10 +240,10 @@ local function gather()
   local root=(g and g:FindFirstChild("Towers")) or workspace
   for _,x in ipairs(root:GetDescendants()) do
     local n=x.Name
-    if n:match(GP) then r[n]=x end
+    if n:match(K.GP) then r[n]=x end
     if x:IsA("Model") then
       for _,v in pairs(x:GetAttributes()) do
-        if type(v)=="string" and v:match(GP) then r[v]=r[v] or x end
+        if type(v)=="string" and v:match(K.GP) then r[v]=r[v] or x end
       end
     end
   end
@@ -267,7 +267,7 @@ local function newId(before,s)
     if n>0 then
       local best
       for _,e in ipairs(c) do
-        if e.d and e.d<=NEAR and (not best or e.d<best.d) then best=e end
+        if e.d and e.d<=K.NEAR and (not best or e.d<best.d) then best=e end
       end
       if best then return best.g,n end
       if n==1 and not c[1].d then return c[1].g,n end
@@ -308,14 +308,15 @@ local QI=Enum.EasingStyle.Quint
 local function tw(o,pr,t,s) TS:Create(o,TweenInfo.new(t or .2,s or QI,Enum.EasingDirection.Out),pr):Play() end
 local function mk(c,pr,par) local o=Instance.new(c) for k,v in pairs(pr) do o[k]=v end o.Parent=par return o end
 local function reg(o,prop,fn) themed[#themed+1]={o,prop,fn} o[prop]=fn(T) return o end
-local fBg=function(t) return t.bg end
-local fAcc=function(t) return t.acc end
-local fSub=function(t) return t.sub end
-local fBtn=function(t) return t.btn end
-local fBtxt=function(t) return t.btxt end
-local fDel=function(t) return t.del end
-local fCtxt=function(t) return t.ctxt end
-local fLine=function(t) return t.btn:Lerp(t.acc,0.3) end
+local F,Z={},{}
+F.Bg=function(t) return t.bg end
+F.Acc=function(t) return t.acc end
+F.Sub=function(t) return t.sub end
+F.Btn=function(t) return t.btn end
+F.Btxt=function(t) return t.btxt end
+F.Del=function(t) return t.del end
+F.Ctxt=function(t) return t.ctxt end
+F.Line=function(t) return t.btn:Lerp(t.acc,0.3) end
 -- GUI-Container: zufaelliger Name, in gethui()/CoreGui wenn moeglich (nicht im PlayerGui sichtbar)
 local function guiParent()
   local ok,h=pcall(function() return gethui and gethui() end)
@@ -329,31 +330,31 @@ pcall(function() if syn and syn.protect_gui then syn.protect_gui(gui) end end)
 local WIN_H=300
 local DEFPOS=UDim2.new(0,10,0.08,0)
 local main=mk("Frame",{Size=UDim2.fromOffset(220,0),Position=DEFPOS,ClipsDescendants=true,BorderSizePixel=0,BackgroundTransparency=1},gui)
-reg(main,"BackgroundColor3",fBg)
+reg(main,"BackgroundColor3",F.Bg)
 local uis=mk("UIScale",{Scale=SCALES[cfg.scale]},main)
 mk("UICorner",{CornerRadius=UDim.new(0,14)},main)
 -- Rahmen mit rotierendem Farbverlauf
-local mStroke=mk("UIStroke",{Thickness=2,Color=W},main)
-local mGrad=mk("UIGradient",{Rotation=0},mStroke)
+Z.mStroke=mk("UIStroke",{Thickness=2,Color=W},main)
+local mGrad=mk("UIGradient",{Rotation=0},Z.mStroke)
 if type(cfg.pos)=="table" and #cfg.pos==4 then
   pcall(function() main.Position=UDim2.new(cfg.pos[1],cfg.pos[2],cfg.pos[3],cfg.pos[4]) end)
 end
-local hdr=mk("Frame",{Size=UDim2.new(1,-76,0,34),BackgroundTransparency=1},main)
-local title=mk("TextLabel",{Position=UDim2.fromOffset(12,0),Size=UDim2.new(1,-12,1,0),Text="Shox Hub",TextXAlignment=Enum.TextXAlignment.Left,BackgroundTransparency=1,Font=Enum.Font.GothamBlack,TextSize=17},hdr)
-reg(title,"TextColor3",fAcc)
+Z.hdr=mk("Frame",{Size=UDim2.new(1,-76,0,34),BackgroundTransparency=1},main)
+local title=mk("TextLabel",{Position=UDim2.fromOffset(12,0),Size=UDim2.new(1,-12,1,0),Text="Shox Hub",TextXAlignment=Enum.TextXAlignment.Left,BackgroundTransparency=1,Font=Enum.Font.GothamBlack,TextSize=17},Z.hdr)
+reg(title,"TextColor3",F.Acc)
 -- Glanz-Effekt ueber dem Titel (Titel bleibt immer gut lesbar) + weiches Leuchten
-local titleG=mk("UIGradient",{Transparency=NumberSequence.new({NumberSequenceKeypoint.new(0,0.25),NumberSequenceKeypoint.new(0.5,0),NumberSequenceKeypoint.new(1,0.25)})},title)
-local titleS=mk("UIStroke",{Thickness=1.2,Transparency=0.85},title)
-reg(titleS,"Color",fAcc)
+Z.titleG=mk("UIGradient",{Transparency=NumberSequence.new({NumberSequenceKeypoint.new(0,0.25),NumberSequenceKeypoint.new(0.5,0),NumberSequenceKeypoint.new(1,0.25)})},title)
+Z.titleS=mk("UIStroke",{Thickness=1.2,Transparency=0.85},title)
+reg(Z.titleS,"Color",F.Acc)
 local status=mk("TextLabel",{Position=UDim2.fromOffset(12,34),Size=UDim2.new(1,-24,0,18),Text="Ready | Anti-AFK on",TextXAlignment=Enum.TextXAlignment.Left,BackgroundTransparency=1,Font=Enum.Font.Gotham,TextSize=11,TextTruncate=Enum.TextTruncate.AtEnd},main)
-reg(status,"TextColor3",fSub)
-local dragH=mk("TextButton",{Size=UDim2.new(1,-76,0,56),BackgroundTransparency=1,Text="",AutoButtonColor=false,Active=true,ZIndex=2},main)
+reg(status,"TextColor3",F.Sub)
+Z.dragH=mk("TextButton",{Size=UDim2.new(1,-76,0,56),BackgroundTransparency=1,Text="",AutoButtonColor=false,Active=true,ZIndex=2},main)
 local div=mk("Frame",{Position=UDim2.fromOffset(12,56),Size=UDim2.new(1,-24,0,1),BorderSizePixel=0},main)
-reg(div,"BackgroundColor3",fAcc)
+reg(div,"BackgroundColor3",F.Acc)
 -- wandernder Lichtstreifen auf der Trennlinie
-local divG=mk("UIGradient",{Transparency=NumberSequence.new({NumberSequenceKeypoint.new(0,1),NumberSequenceKeypoint.new(0.5,0.1),NumberSequenceKeypoint.new(1,1)})},div)
+Z.divG=mk("UIGradient",{Transparency=NumberSequence.new({NumberSequenceKeypoint.new(0,1),NumberSequenceKeypoint.new(0.5,0.1),NumberSequenceKeypoint.new(1,1)})},div)
 local body=mk("ScrollingFrame",{Position=UDim2.fromOffset(0,60),Size=UDim2.new(1,0,1,-60),BackgroundTransparency=1,BorderSizePixel=0,ScrollBarThickness=3,CanvasSize=UDim2.new(),AutomaticCanvasSize=Enum.AutomaticSize.Y,ScrollingDirection=Enum.ScrollingDirection.Y},main)
-reg(body,"ScrollBarImageColor3",fAcc)
+reg(body,"ScrollBarImageColor3",F.Acc)
 mk("UIListLayout",{Padding=UDim.new(0,6),SortOrder=Enum.SortOrder.LayoutOrder},body)
 mk("UIPadding",{PaddingLeft=UDim.new(0,12),PaddingRight=UDim.new(0,14),PaddingTop=UDim.new(0,4),PaddingBottom=UDim.new(0,12)},body)
 local ord=0
@@ -362,8 +363,8 @@ local function lbl(t)
   local r=row(14)
   local bar=mk("Frame",{Size=UDim2.fromOffset(3,10),Position=UDim2.fromOffset(0,2),BorderSizePixel=0},r)
   mk("UICorner",{CornerRadius=UDim.new(1,0)},bar)
-  reg(bar,"BackgroundColor3",fAcc)
-  reg(mk("TextLabel",{Position=UDim2.fromOffset(9,0),Size=UDim2.new(1,-9,1,0),BackgroundTransparency=1,Text=t,TextXAlignment=Enum.TextXAlignment.Left,Font=Enum.Font.GothamBold,TextSize=10},r),"TextColor3",fSub)
+  reg(bar,"BackgroundColor3",F.Acc)
+  reg(mk("TextLabel",{Position=UDim2.fromOffset(9,0),Size=UDim2.new(1,-9,1,0),BackgroundTransparency=1,Text=t,TextXAlignment=Enum.TextXAlignment.Left,Font=Enum.Font.GothamBold,TextSize=10},r),"TextColor3",F.Sub)
   return r
 end
 -- Klick-Welle
@@ -386,7 +387,7 @@ local function btn(par,txt,i,n,bgf,txf,ts)
   mk("UIPadding",{PaddingLeft=UDim.new(0,4),PaddingRight=UDim.new(0,4)},b)
   local sc=mk("UIScale",{Scale=1},b)
   local sk=mk("UIStroke",{Thickness=1,Transparency=0.55,ApplyStrokeMode=Enum.ApplyStrokeMode.Border},b)
-  reg(sk,"Color",fLine)
+  reg(sk,"Color",F.Line)
   scl[b],skm[b]=sc,sk
   if bgf then reg(b,"BackgroundColor3",bgf) end
   if txf then reg(b,"TextColor3",txf) end
@@ -399,70 +400,70 @@ local function btn(par,txt,i,n,bgf,txf,ts)
   on(b.InputEnded,function(x)
     if not isIn(x) then return end
     tw(sc,{Scale=1},.35,Enum.EasingStyle.Back)
-    tw(sk,{Color=fLine(T),Thickness=1,Transparency=0.55},.45)
+    tw(sk,{Color=F.Line(T),Thickness=1,Transparency=0.55},.45)
   end)
   return b
 end
-local bRec=btn(row(40),"Record",1,1,nil,nil,15)
-local bPlay=btn(row(40),"Play",1,1,nil,nil,15)
+Z.bRec=btn(row(40),"Record",1,1,nil,nil,15)
+Z.bPlay=btn(row(40),"Play",1,1,nil,nil,15)
 lbl("SLOTS")
-local sRow=row(30)
-local sb={}
-for i=1,5 do sb[i]=btn(sRow,tostring(i),i,5,nil,nil,14) end
+Z.sRow=row(30)
+Z.sb={}
+for i=1,5 do Z.sb[i]=btn(Z.sRow,tostring(i),i,5,nil,nil,14) end
 -- Slot-Name (gehoert zum gewaehlten Slot)
-local nBox=mk("TextBox",{Size=UDim2.new(1,0,0,28),Text="",PlaceholderText="Slot name...",ClearTextOnFocus=false,MaxVisibleGraphemes=-1,Font=Enum.Font.GothamBold,TextSize=12,BorderSizePixel=0,TextTruncate=Enum.TextTruncate.AtEnd,LayoutOrder=0},row(28))
-mk("UICorner",{CornerRadius=UDim.new(0,9)},nBox)
-mk("UIPadding",{PaddingLeft=UDim.new(0,8),PaddingRight=UDim.new(0,8)},nBox)
-reg(nBox,"BackgroundColor3",fBtn) reg(nBox,"TextColor3",fBtxt) reg(nBox,"PlaceholderColor3",fSub)
-local function showName() nBox.Text=sname(slot) end
+Z.nBox=mk("TextBox",{Size=UDim2.new(1,0,0,28),Text="",PlaceholderText="Slot name...",ClearTextOnFocus=false,MaxVisibleGraphemes=-1,Font=Enum.Font.GothamBold,TextSize=12,BorderSizePixel=0,TextTruncate=Enum.TextTruncate.AtEnd,LayoutOrder=0},row(28))
+mk("UICorner",{CornerRadius=UDim.new(0,9)},Z.nBox)
+mk("UIPadding",{PaddingLeft=UDim.new(0,8),PaddingRight=UDim.new(0,8)},Z.nBox)
+reg(Z.nBox,"BackgroundColor3",F.Btn) reg(Z.nBox,"TextColor3",F.Btxt) reg(Z.nBox,"PlaceholderColor3",F.Sub)
+local function showName() Z.nBox.Text=sname(slot) end
 -- Versteckte Reihen (Copy Log, Export/Import): 10 schnelle Taps auf den Header (Shox Hub) schalten sie um (wird gespeichert)
-local cRow=row(28)
-local bCopy=btn(cRow,"Copy Log",1,1,function(t) return t.acc:Lerp(t.bg,0.4) end,fCtxt,12)
-local eRow=row(28)
-local bExp=btn(eRow,"Export Slot",1,2,function(t) return t.acc:Lerp(t.bg,0.4) end,fCtxt,12)
-local bImp=btn(eRow,"Import Slot",2,2,function(t) return t.acc:Lerp(t.bg,0.4) end,fCtxt,12)
-local pRow=row(28)
-local pBox=mk("TextBox",{Size=UDim2.new(1,0,1,0),Text="",PlaceholderText="Paste slot code here...",ClearTextOnFocus=true,Font=Enum.Font.GothamBold,TextSize=12,BorderSizePixel=0,TextTruncate=Enum.TextTruncate.AtEnd,TextXAlignment=Enum.TextXAlignment.Left},pRow)
-mk("UICorner",{CornerRadius=UDim.new(0,9)},pBox)
-mk("UIPadding",{PaddingLeft=UDim.new(0,8),PaddingRight=UDim.new(0,8)},pBox)
-reg(pBox,"BackgroundColor3",fBtn) reg(pBox,"TextColor3",fBtxt) reg(pBox,"PlaceholderColor3",fSub)
+Z.cRow=row(28)
+Z.bCopy=btn(Z.cRow,"Copy Log",1,1,function(t) return t.acc:Lerp(t.bg,0.4) end,F.Ctxt,12)
+Z.eRow=row(28)
+Z.bExp=btn(Z.eRow,"Export Slot",1,2,function(t) return t.acc:Lerp(t.bg,0.4) end,F.Ctxt,12)
+Z.bImp=btn(Z.eRow,"Import Slot",2,2,function(t) return t.acc:Lerp(t.bg,0.4) end,F.Ctxt,12)
+Z.pRow=row(28)
+Z.pBox=mk("TextBox",{Size=UDim2.new(1,0,1,0),Text="",PlaceholderText="Paste slot code here...",ClearTextOnFocus=true,Font=Enum.Font.GothamBold,TextSize=12,BorderSizePixel=0,TextTruncate=Enum.TextTruncate.AtEnd,TextXAlignment=Enum.TextXAlignment.Left},Z.pRow)
+mk("UICorner",{CornerRadius=UDim.new(0,9)},Z.pBox)
+mk("UIPadding",{PaddingLeft=UDim.new(0,8),PaddingRight=UDim.new(0,8)},Z.pBox)
+reg(Z.pBox,"BackgroundColor3",F.Btn) reg(Z.pBox,"TextColor3",F.Btxt) reg(Z.pBox,"PlaceholderColor3",F.Sub)
 local function showCopy()
-  cRow.Visible=cfg.dev
-  eRow.Visible=cfg.dev
-  pRow.Visible=cfg.dev
+  Z.cRow.Visible=cfg.dev
+  Z.eRow.Visible=cfg.dev
+  Z.pRow.Visible=cfg.dev
 end
-local dRow=row(28)
-local bDelCur=btn(dRow,"Delete Current",1,2,fDel,fCtxt,12)
-local bDelSlot=btn(dRow,"Delete Slot",2,2,fDel,fCtxt,12)
+Z.dRow=row(28)
+Z.bDelCur=btn(Z.dRow,"Delete Current",1,2,F.Del,F.Ctxt,12)
+Z.bDelSlot=btn(Z.dRow,"Delete Slot",2,2,F.Del,F.Ctxt,12)
 lbl("STATS")
-local stLbl=mk("TextLabel",{Size=UDim2.new(1,0,0,32),BackgroundTransparency=1,Text="",TextXAlignment=Enum.TextXAlignment.Left,TextYAlignment=Enum.TextYAlignment.Top,Font=Enum.Font.Gotham,TextSize=11,TextWrapped=true},row(32))
-reg(stLbl,"TextColor3",fBtxt)
-local bStR=btn(row(26),"Reset Stats",1,1,fDel,fCtxt,12)
-local function hms(x) x=math.floor(x) return string.format("%d:%02d:%02d",x//3600,(x%3600)//60,x%60) end
+Z.stLbl=mk("TextLabel",{Size=UDim2.new(1,0,0,32),BackgroundTransparency=1,Text="",TextXAlignment=Enum.TextXAlignment.Left,TextYAlignment=Enum.TextYAlignment.Top,Font=Enum.Font.Gotham,TextSize=11,TextWrapped=true},row(32))
+reg(Z.stLbl,"TextColor3",F.Btxt)
+Z.bStR=btn(row(26),"Reset Stats",1,1,F.Del,F.Ctxt,12)
+function Z.hms(x) x=math.floor(x) return string.format("%d:%02d:%02d",x//3600,(x%3600)//60,x%60) end
 local function statsTxt()
   local s=cfg.st
-  stLbl.Text="Runs: "..s.runs.."  |  Avg: "..mmss(s.runs>0 and s.rt/s.runs or 0).."\nTotal time: "..hms(s.time)
+  Z.stLbl.Text="Runs: "..s.runs.."  |  Avg: "..mmss(s.runs>0 and s.rt/s.runs or 0).."\nTotal time: "..Z.hms(s.time)
 end
 lbl("OPTIONS")
-local o1=row(28)
-local bRuns=btn(o1,"",1,2,fBtn,fBtxt,12)
-local bSize=btn(o1,"",2,2,fBtn,fBtxt,12)
-local o2=row(28)
-local bTrans=btn(o2,"",1,2,fBtn,fBtxt,12)
-local bTheme=btn(o2,"",2,2,fBtn,fBtxt,12)
-local o3=row(28)
-local bLag=btn(o3,"",1,2,fBtn,fBtxt,12)
-local bIntro=btn(o3,"",2,2,fBtn,fBtxt,12)
-local DDROWS=math.ceil(#THEMES/2)
-local DDH=DDROWS*32-6+8
+Z.o1=row(28)
+Z.bRuns=btn(Z.o1,"",1,2,F.Btn,F.Btxt,12)
+Z.bSize=btn(Z.o1,"",2,2,F.Btn,F.Btxt,12)
+Z.o2=row(28)
+Z.bTrans=btn(Z.o2,"",1,2,F.Btn,F.Btxt,12)
+Z.bTheme=btn(Z.o2,"",2,2,F.Btn,F.Btxt,12)
+Z.o3=row(28)
+Z.bLag=btn(Z.o3,"",1,2,F.Btn,F.Btxt,12)
+Z.bIntro=btn(Z.o3,"",2,2,F.Btn,F.Btxt,12)
+Z.DDROWS=math.ceil(#THEMES/2)
+Z.DDH=Z.DDROWS*32-6+8
 local ddRow=row(0)
 ddRow.ClipsDescendants=true
 mk("UIPadding",{PaddingLeft=UDim.new(0,4),PaddingRight=UDim.new(0,4),PaddingTop=UDim.new(0,4),PaddingBottom=UDim.new(0,4)},ddRow)
-local bDisc=btn(row(28),"Copy Discord Link",1,1,function(t) return t.acc:Lerp(t.bg,0.4) end,fCtxt,12)
-local foot=row(14)
-reg(mk("TextLabel",{Size=UDim2.new(1,0,1,0),BackgroundTransparency=1,Text=DISCORD,TextXAlignment=Enum.TextXAlignment.Left,Font=Enum.Font.Gotham,TextSize=10},foot),"TextColor3",fSub)
-local foot2=row(14)
-reg(mk("TextLabel",{Size=UDim2.new(1,0,1,0),BackgroundTransparency=1,Text="Shox Hub | Anti-AFK on",TextXAlignment=Enum.TextXAlignment.Left,Font=Enum.Font.Gotham,TextSize=10},foot2),"TextColor3",fSub)
+Z.bDisc=btn(row(28),"Copy Discord Link",1,1,function(t) return t.acc:Lerp(t.bg,0.4) end,F.Ctxt,12)
+Z.foot=row(14)
+reg(mk("TextLabel",{Size=UDim2.new(1,0,1,0),BackgroundTransparency=1,Text=DISCORD,TextXAlignment=Enum.TextXAlignment.Left,Font=Enum.Font.Gotham,TextSize=10},Z.foot),"TextColor3",F.Sub)
+Z.foot2=row(14)
+reg(mk("TextLabel",{Size=UDim2.new(1,0,1,0),BackgroundTransparency=1,Text="Shox Hub | Anti-AFK on",TextXAlignment=Enum.TextXAlignment.Left,Font=Enum.Font.Gotham,TextSize=10},Z.foot2),"TextColor3",F.Sub)
 
 -- Status: animiert nur bei echter Aenderung; stq = ohne Animation (Ticker)
 local function st(t)
@@ -475,39 +476,41 @@ local function stq(t) status.Text=t end
 local function recTxt() return "Stop  "..mmss(os.clock()-t0).."  ("..#steps..")" end
 local function updateSlots()
   for n=1,5 do
-    local b=sb[n]
+    local b=Z.sb[n]
     local sel=n==slot
     tw(b,{BackgroundColor3=sel and T.acc or T.btn,TextColor3=sel and T.bg or (filled[n] and T.btxt or T.sub)},.25)
   end
 end
 local function ui()
-  bRec.Text=rec and recTxt() or "Record"
-  tw(bRec,{BackgroundColor3=rec and T.ron or T.rec,TextColor3=rec and T.onT or T.ctxt},.3)
-  bPlay.Text=play and "Stop" or "Play"
-  tw(bPlay,{BackgroundColor3=play and T.pon or T.play,TextColor3=play and T.onT or T.ctxt},.3)
+  Z.bRec.Text=rec and recTxt() or "Record"
+  tw(Z.bRec,{BackgroundColor3=rec and T.ron or T.rec,TextColor3=rec and T.onT or T.ctxt},.3)
+  Z.bPlay.Text=play and "Stop" or "Play"
+  tw(Z.bPlay,{BackgroundColor3=play and T.pon or T.play,TextColor3=play and T.onT or T.ctxt},.3)
   updateSlots()
 end
 local function optTxt()
-  bRuns.Text="Auto S"..slot..": "..(cfg.ap and "On" or "Off")
-  bSize.Text="Size: "..SNAME[cfg.scale]
-  bTrans.Text="Opacity: "..math.floor((1-TRANS[cfg.trans])*100+0.5).."%"
-  bTheme.Text="Theme: "..themeName
-  bLag.Text="Anti-Lag: "..(cfg.lag and "On" or "Off")
-  bIntro.Text="Intro: "..(cfg.intro and "On" or "Off")
+  Z.bRuns.Text="Auto S"..slot..": "..(cfg.ap and "On" or "Off")
+  Z.bSize.Text="Size: "..SNAME[cfg.scale]
+  Z.bTrans.Text="Opacity: "..math.floor((1-TRANS[cfg.trans])*100+0.5).."%"
+  Z.bTheme.Text="Theme: "..themeName
+  Z.bLag.Text="Anti-Lag: "..(cfg.lag and "On" or "Off")
+  Z.bIntro.Text="Intro: "..(cfg.intro and "On" or "Off")
 end
 
 -- Drag + Minimize
+local bnd,clampMain
+do
 local dIn,dStart,dPos,dLast,dBase
 local tapN,tapLast,tapT=0,0,0
 -- AbsolutePosition rechnet ohne die Roblox-Leiste oben (GuiInset): Fenster darf bis zum echten Bildschirmrand hoch
 local GS=game:GetService("GuiService")
-local function bnd()
+function bnd()
   local v=workspace.CurrentCamera.ViewportSize
   local ok,ti=pcall(function() return GS:GetGuiInset() end)
   local ins=ok and typeof(ti)=="Vector2" and math.clamp(ti.Y,0,100) or 0
   return v,-ins,v.Y-ins-40
 end
-local function clampMain()
+function clampMain()
   pcall(function()
     local v,minY,maxY=bnd()
     local sz,ap=main.AbsoluteSize,main.AbsolutePosition
@@ -519,7 +522,7 @@ local function clampMain()
     end
   end)
 end
-on(dragH.InputBegan,function(i)
+on(Z.dragH.InputBegan,function(i)
   if isIn(i) then dIn,dStart,dPos,dLast,dBase=i,i.Position,main.AbsolutePosition,i.Position,main.Position tapT=os.clock() end
 end)
 on(UIS.InputChanged,function(i)
@@ -556,40 +559,41 @@ on(UIS.InputEnded,function(i)
   end
 end)
 pcall(function() on(workspace.CurrentCamera:GetPropertyChangedSignal("ViewportSize"),clampMain) end)
-local bMin=mk("TextButton",{Text="-",Position=UDim2.new(1,-66,0,5),Size=UDim2.fromOffset(26,24),Font=Enum.Font.GothamBold,TextSize=16,AutoButtonColor=false,BorderSizePixel=0},main)
-mk("UICorner",{CornerRadius=UDim.new(0,8)},bMin)
-local minSc=mk("UIScale",{Scale=1},bMin)
-reg(bMin,"BackgroundColor3",fBtn) reg(bMin,"TextColor3",fBtxt)
-on(bMin.InputBegan,function(x) if isIn(x) then tw(minSc,{Scale=0.85},.08) end end)
-on(bMin.InputEnded,function(x) if isIn(x) then tw(minSc,{Scale=1},.3,Enum.EasingStyle.Back) end end)
+end
+Z.bMin=mk("TextButton",{Text="-",Position=UDim2.new(1,-66,0,5),Size=UDim2.fromOffset(26,24),Font=Enum.Font.GothamBold,TextSize=16,AutoButtonColor=false,BorderSizePixel=0},main)
+mk("UICorner",{CornerRadius=UDim.new(0,8)},Z.bMin)
+Z.minSc=mk("UIScale",{Scale=1},Z.bMin)
+reg(Z.bMin,"BackgroundColor3",F.Btn) reg(Z.bMin,"TextColor3",F.Btxt)
+on(Z.bMin.InputBegan,function(x) if isIn(x) then tw(Z.minSc,{Scale=0.85},.08) end end)
+on(Z.bMin.InputEnded,function(x) if isIn(x) then tw(Z.minSc,{Scale=1},.3,Enum.EasingStyle.Back) end end)
 local mini=false
-on(bMin.MouseButton1Click,function()
+on(Z.bMin.MouseButton1Click,function()
   mini=not mini
-  bMin.Text=mini and "+" or "-"
+  Z.bMin.Text=mini and "+" or "-"
   tw(main,{Size=UDim2.fromOffset(220,mini and 34 or WIN_H)},.45,Enum.EasingStyle.Quint)
   task.delay(.5,clampMain)
 end)
 -- X-Button: schliesst das ganze Fenster, der Menu-Button (Quadrat, verschiebbar) oeffnet es wieder
-local bX=mk("TextButton",{Text="X",Position=UDim2.new(1,-36,0,5),Size=UDim2.fromOffset(26,24),Font=Enum.Font.GothamBold,TextSize=14,AutoButtonColor=false,BorderSizePixel=0},main)
-mk("UICorner",{CornerRadius=UDim.new(0,8)},bX)
-local xSc=mk("UIScale",{Scale=1},bX)
-reg(bX,"BackgroundColor3",fBtn) reg(bX,"TextColor3",fBtxt)
-on(bX.InputBegan,function(x) if isIn(x) then tw(xSc,{Scale=0.85},.08) end end)
-on(bX.InputEnded,function(x) if isIn(x) then tw(xSc,{Scale=1},.3,Enum.EasingStyle.Back) end end)
+Z.bX=mk("TextButton",{Text="X",Position=UDim2.new(1,-36,0,5),Size=UDim2.fromOffset(26,24),Font=Enum.Font.GothamBold,TextSize=14,AutoButtonColor=false,BorderSizePixel=0},main)
+mk("UICorner",{CornerRadius=UDim.new(0,8)},Z.bX)
+Z.xSc=mk("UIScale",{Scale=1},Z.bX)
+reg(Z.bX,"BackgroundColor3",F.Btn) reg(Z.bX,"TextColor3",F.Btxt)
+on(Z.bX.InputBegan,function(x) if isIn(x) then tw(Z.xSc,{Scale=0.85},.08) end end)
+on(Z.bX.InputEnded,function(x) if isIn(x) then tw(Z.xSc,{Scale=1},.3,Enum.EasingStyle.Back) end end)
 local MB=40
 local mbtn=mk("TextButton",{Text="",Size=UDim2.fromOffset(MB,MB),Position=main.Position,AutoButtonColor=false,BorderSizePixel=0,Visible=false,Active=true,ZIndex=3},gui)
 if type(cfg.mpos)=="table" and #cfg.mpos==4 then
   pcall(function() mbtn.Position=UDim2.new(cfg.mpos[1],cfg.mpos[2],cfg.mpos[3],cfg.mpos[4]) end)
 end
 mk("UICorner",{CornerRadius=UDim.new(0,10)},mbtn)
-reg(mbtn,"BackgroundColor3",fBg)
-local mbS=mk("UIStroke",{Thickness=2,Color=W,ApplyStrokeMode=Enum.ApplyStrokeMode.Border},mbtn)
-local mbGrad=mk("UIGradient",{Rotation=0},mbS)
+reg(mbtn,"BackgroundColor3",F.Bg)
+Z.mbS=mk("UIStroke",{Thickness=2,Color=W,ApplyStrokeMode=Enum.ApplyStrokeMode.Border},mbtn)
+local mbGrad=mk("UIGradient",{Rotation=0},Z.mbS)
 local mbSc=mk("UIScale",{Scale=1},mbtn)
 for n=0,2 do
   local bar=mk("Frame",{AnchorPoint=Vector2.new(.5,.5),Position=UDim2.new(.5,0,.5,(n-1)*7),Size=UDim2.fromOffset(18,3),BorderSizePixel=0,ZIndex=4},mbtn)
   mk("UICorner",{CornerRadius=UDim.new(1,0)},bar)
-  reg(bar,"BackgroundColor3",fAcc)
+  reg(bar,"BackgroundColor3",F.Acc)
 end
 local function setOpen(open)
   if open then
@@ -607,7 +611,8 @@ local function setOpen(open)
     tw(mbSc,{Scale=1},.45,Enum.EasingStyle.Back)
   end
 end
-on(bX.MouseButton1Click,function() setOpen(false) end)
+on(Z.bX.MouseButton1Click,function() setOpen(false) end)
+do
 local mIn,mStart,mBase,mAbs,mLast,mMoved
 on(mbtn.InputBegan,function(i)
   if isIn(i) then
@@ -648,6 +653,7 @@ on(UIS.InputEnded,function(i)
     end
   end
 end)
+end
 
 -- Theme-Dropdown (gleitet auf/zu, Eintraege blenden gestaffelt ein)
 local applyTheme
@@ -664,7 +670,7 @@ local function follow(t)
 end
 local function setDD(open)
   ddOpen=open
-  tw(ddRow,{Size=UDim2.new(1,0,0,open and DDH or 0)},open and .5 or .3,QI)
+  tw(ddRow,{Size=UDim2.new(1,0,0,open and Z.DDH or 0)},open and .5 or .3,QI)
   for i,e in ipairs(ddItems) do
     local it,sk=e[1],e[2]
     if open then it.BackgroundTransparency=1 it.TextTransparency=1 sk.Transparency=1 end
@@ -707,13 +713,14 @@ applyTheme=function(name,quick)
   ui()
   if not quick then saveCfg() end
 end
-on(bTheme.MouseButton1Click,function() setDD(not ddOpen) end)
+on(Z.bTheme.MouseButton1Click,function() setDD(not ddOpen) end)
 
-local alRun
+local alRun,alRestore
 -- Anti-Lag (FPS-Boost, vollstaendig rueckgaengig machbar)
 -- Aus: Partikel/Trails/Beams/Feuer/Rauch, Post-Effekte (Bloom, Blur, SunRays, DoF, ColorCorrection), Schatten (global + pro Part), Reflexionen, Terrain-Deko/Wellen.
 -- Ruckelfrei: Aenderungen laufen in einer Warteschlange mit festem Zeitbudget pro Frame (max. ca. 2 ms), nie alles auf einmal.
 -- Keine Materialwechsel und keine Qualitaetsstufe mehr (das hat das Spiel haengen lassen).
+do
 local LS=game:GetService("Lighting")
 local AL={on=false,orig=setmetatable({},{__mode="k"}),q={},qi=1,conn=nil,hb=nil,env=nil,rest={},ri=1}
 local FX={ParticleEmitter=true,Trail=true,Beam=true,Smoke=true,Fire=true,Sparkles=true,BloomEffect=true,BlurEffect=true,ColorCorrectionEffect=true,DepthOfFieldEffect=true,SunRaysEffect=true}
@@ -741,7 +748,7 @@ local function alStep(budget)
   end
   if AL.qi>#q then AL.q={} AL.qi=1 end
 end
-local function alRestore(budget)
+function alRestore(budget)
   local t=os.clock()
   local r=AL.rest
   while AL.ri<=#r do
@@ -797,6 +804,7 @@ alRun=function(enable)
     end)
   end
 end
+end
 
 -- Optionen
 local function cyc(b,key,list,after)
@@ -806,15 +814,15 @@ local function cyc(b,key,list,after)
     optTxt() saveCfg()
   end)
 end
-cyc(bSize,"scale",SCALES,function() tw(uis,{Scale=SCALES[cfg.scale]},.4,Enum.EasingStyle.Back) task.delay(.5,clampMain) end)
-cyc(bTrans,"trans",TRANS,function() tw(main,{BackgroundTransparency=TRANS[cfg.trans]},.3) end)
-on(bLag.MouseButton1Click,function()
+cyc(Z.bSize,"scale",SCALES,function() tw(uis,{Scale=SCALES[cfg.scale]},.4,Enum.EasingStyle.Back) task.delay(.5,clampMain) end)
+cyc(Z.bTrans,"trans",TRANS,function() tw(main,{BackgroundTransparency=TRANS[cfg.trans]},.3) end)
+on(Z.bLag.MouseButton1Click,function()
   cfg.lag=not cfg.lag
   alRun(cfg.lag)
   optTxt() saveCfg()
   st(cfg.lag and "Anti-Lag on" or "Anti-Lag off")
 end)
-on(bIntro.MouseButton1Click,function()
+on(Z.bIntro.MouseButton1Click,function()
   cfg.intro=not cfg.intro
   if not cfg.intro then
     if introS then pcall(function() introS:Stop() introS:Destroy() end) introS=nil end
@@ -824,6 +832,10 @@ on(bIntro.MouseButton1Click,function()
 end)
 
 -- Intro-Song: einmal beim Start (Datei .mp3/.ogg in ShoxHub/music/ oder ShoxHub/, Name mit "intro" wird bevorzugt)
+local idbg,ilog,playIntro,ensureIntro
+do
+local INTRO_URL="https://raw.githubusercontent.com/ShoxHub/Shox-Hub-Ctd/main/intro.ogg"
+local INTRO_URL2="https://files.catbox.moe/j5p4sg.ogg"
 local function findIntro()
   for _,d in ipairs({MDIR,DIR}) do
     local ok,l=pcall(listfiles,d)
@@ -961,7 +973,7 @@ local function introFx(snd)
     if tl>=FADE1 then finish(false) end
   end)
 end
-local function playIntro()
+function playIntro()
   if not cfg.intro then return end
   if not (listfiles and getcustomasset) then st("Intro: listfiles/getcustomasset missing") return end
   local f=findIntro()
@@ -987,8 +999,8 @@ end
 
 -- Auto-Download des Intro-Songs (findIntro/introFx/playIntro bleiben unveraendert)
 -- Probiert INTRO_URL (GitHub raw), danach INTRO_URL2 (Reserve). Jede Antwort wird per Dateikopf (OggS/ID3/MP3) geprueft.
-local idbg={}
-local function ilog(s) idbg[#idbg+1]=os.date("%H:%M:%S").." "..s end
+idbg={}
+function ilog(s) idbg[#idbg+1]=os.date("%H:%M:%S").." "..s end
 local function audioExt(b)
   if type(b)~="string" or #b<1000 then return nil end
   local h=b:sub(1,4)
@@ -1013,7 +1025,7 @@ local function dlData(url)
     if ext then return b,ext end
   else ilog("HttpGet failed: "..tostring(b)) end
 end
-local function ensureIntro()
+function ensureIntro()
   if not cfg.intro then return end
   if not (writefile and listfiles and getcustomasset) then ilog("executor lacks writefile/listfiles/getcustomasset") return end
   local f=findIntro()
@@ -1036,6 +1048,7 @@ local function ensureIntro()
   ilog("readback len="..tostring(okr and #back or back))
   ilog("findIntro now: "..tostring(findIntro()))
 end
+end
 
 G.ShoxOff=function()
   alive=false rec,play=false,false gen+=1
@@ -1057,7 +1070,7 @@ local function add(tt,k,p,m,a)
   for i=1,a.n do e[i]=enc(a[i]) end
   if k=="R" or k=="B" then
     local key=k..HS:JSONEncode({p,tostring(m),e})
-    if key==lastK and tt-lastT<DEDUP then return end
+    if key==lastK and tt-lastT<K.DEDUP then return end
     lastK,lastT=key,tt
   end
   local s={t=tt,k=k,p=p,m=m,a=e,n=a.n}
@@ -1068,14 +1081,14 @@ G.ShoxH=function(self,m,...)
   if not (alive and rec) then return end
   local tt,a=os.clock()-t0,table.pack(...)
   task.spawn(pcall,function()
-    if typeof(self)=="Instance" and not IGNORE[self.Name] then
+    if typeof(self)=="Instance" and not K.IGNORE[self.Name] then
       local s=add(tt,"R",path(self),m,a)
-      if s and self.Name==ADD then
+      if s and self.Name==K.ADD then
         local bf=gather()
         local id,n=newId(bf,s)
         if id then s.tid=id st("Tower-Id "..id:sub(1,8).." ("..n..")")
         else st("Tower-Id: none ("..n..")") end
-      elseif s and USE[self.Name] and not idloc then
+      elseif s and K.USE[self.Name] and not idloc then
         idloc=true
         s.loc=locate(tkey(s,"Id"))
       end
@@ -1114,17 +1127,17 @@ on(pg.DescendantAdded,hookBtn)
 
 -- Effekte pro Frame (Rahmen-Rotation, Titel-Glanz, Puls bei Record/Play) + Anzeige alle 0.5s
 -- Stats: Gesamtzeit laeuft live mit und wird alle 15 s gespeichert (bleibt auch bei Rejoin/Kick erhalten)
-local pulsers={{bRec,function() return rec end},{bPlay,function() return play end}}
+local pulsers={{Z.bRec,function() return rec end},{Z.bPlay,function() return play end}}
 local ac2,rot,stSave=0,0,0
 on(RS.Heartbeat,function(dt)
   local c=os.clock()
   rot=(rot+dt*((rec or play) and 140 or 50))%360
   mGrad.Rotation=rot
   mbGrad.Rotation=rot
-  titleG.Offset=Vector2.new((c*0.5)%2-1,0)
-  divG.Offset=Vector2.new((c*0.4)%2-1,0)
+  Z.titleG.Offset=Vector2.new((c*0.5)%2-1,0)
+  Z.divG.Offset=Vector2.new((c*0.4)%2-1,0)
   local a=(math.sin(c*5)+1)/2
-  titleS.Transparency=0.6+0.35*((math.sin(c*2)+1)/2)
+  Z.titleS.Transparency=0.6+0.35*((math.sin(c*2)+1)/2)
   for _,p in ipairs(pulsers) do
     local sk=skm[p[1]]
     if p[2]() then
@@ -1132,7 +1145,7 @@ on(RS.Heartbeat,function(dt)
       sk.Color=T.acc sk.Thickness=1.5+a*2 sk.Transparency=0.5*(1-a)
     elseif p.on then
       p.on=false
-      sk.Color=fLine(T) sk.Thickness=1 sk.Transparency=0.55
+      sk.Color=F.Line(T) sk.Thickness=1 sk.Transparency=0.55
     end
   end
   if play and runT0 then
@@ -1143,7 +1156,7 @@ on(RS.Heartbeat,function(dt)
   ac2+=dt
   if ac2<0.5 then return end
   ac2=0
-  if rec then bRec.Text=recTxt()
+  if rec then Z.bRec.Text=recTxt()
   elseif play and runT0 then
     statsTxt()
     local lim=RUNS[cfg.runs]
@@ -1156,7 +1169,7 @@ end)
 local function lg(e) if #rlog<300 then rlog[#rlog+1]=e end end
 local function skipB(s)
   local nm=(table.concat(s.p,"."):gsub("\1","#")..tostring(s.m)):lower()
-  for _,w in ipairs(SKIPB) do if nm:find(w,1,true) then return true end end
+  for _,w in ipairs(K.SKIPB) do if nm:find(w,1,true) then return true end end
 end
 -- Ende-Erkennung: "Play Again" wird erst ausgefuehrt, wenn der Endbildschirm wirklich sichtbar ist
 local function vis(x)
@@ -1192,7 +1205,7 @@ local function runOnce(my)
   local hasRPA=false
   for _,s in ipairs(steps) do
     if s.k=="R" then
-      if USE[(s.p[#s.p]:gsub("\1%d+$",""))] then
+      if K.USE[(s.p[#s.p]:gsub("\1%d+$",""))] then
         local id=tkey(s,"Id")
         if type(id)=="string" and not inOrd[id] then inOrd[id]=true ordl[#ordl+1]=id end
       end
@@ -1208,7 +1221,7 @@ local function runOnce(my)
   for idx,s in ipairs(steps) do
     if not play or gen~=my then return end
     local key=s.k..HS:JSONEncode({s.p,tostring(s.m),s.a})
-    if key==pk and s.t-pt<DEDUP then pt=s.t continue end
+    if key==pk and s.t-pt<K.DEDUP then pt=s.t continue end
     pk,pt=key,s.t
     if s.k=="B" and skipB(s) then continue end
     if isEnd(s) then
@@ -1260,9 +1273,9 @@ local function runOnce(my)
     if not o then
       miss+=1
       lg({i=idx,nf=table.concat(s.p,"/")})
-    elseif s.k=="R" and USE[o.Name] and not idmap[tkey(s,"Id")] then
+    elseif s.k=="R" and K.USE[o.Name] and not idmap[tkey(s,"Id")] then
       lg({i=idx,n=o.Name,nomap=tostring(tkey(s,"Id")):sub(1,8)})
-    elseif s.k=="R" and o.Name==ADD then
+    elseif s.k=="R" and o.Name==K.ADD then
       local a=decArgs(s)
       local bf=gather()
       local ok,res=pcall(function()
@@ -1288,8 +1301,8 @@ local function runOnce(my)
             if s.m=="FireServer" then return o:FireServer(table.unpack(a,1,s.n)) end
             return o:InvokeServer(table.unpack(a,1,s.n))
           end)
-          if (not ok) or USE[o.Name] then
-            lg({i=idx,n=o.Name,ok=ok,e=(not ok) and tostring(res) or nil,id=USE[o.Name] and tostring(type(a[1])=="table" and a[1].Id):sub(1,8) or nil})
+          if (not ok) or K.USE[o.Name] then
+            lg({i=idx,n=o.Name,ok=ok,e=(not ok) and tostring(res) or nil,id=K.USE[o.Name] and tostring(type(a[1])=="table" and a[1].Id):sub(1,8) or nil})
           end
         elseif firesignal then
           local ok,e=pcall(firesignal,o.Activated)
@@ -1378,7 +1391,7 @@ end
 
 -- Record: bei belegtem Slot erst bestaetigen
 local armRec=false
-on(bRec.MouseButton1Click,function()
+on(Z.bRec.MouseButton1Click,function()
   if play then return end
   if rec then
     rec=false
@@ -1390,7 +1403,7 @@ on(bRec.MouseButton1Click,function()
     return
   end
   if (#steps>0 or filled[slot]) and not armRec then
-    armRec=true bRec.Text="Overwrite slot?"
+    armRec=true Z.bRec.Text="Overwrite slot?"
     task.delay(2.5,function() armRec=false if not rec then ui() end end)
     return
   end
@@ -1428,23 +1441,23 @@ local function startPlay()
     if gen==my then play=false ui() end
   end)
 end
-on(bPlay.MouseButton1Click,function()
+on(Z.bPlay.MouseButton1Click,function()
   if rec then return end
   if play then play=false gen+=1 runT0=nil waitEnd=false saveCfg() statsTxt() st("Stopped") ui() return end
   startPlay()
 end)
 for i=1,5 do
-  on(sb[i].MouseButton1Click,function()
+  on(Z.sb[i].MouseButton1Click,function()
     if rec or play then return end
     armRec=false slot=i cfg.slot=i saveCfg() loadSlot(i) optTxt()
     -- kleiner Pop auf dem gewaehlten Slot
-    local sc=scl[sb[i]]
+    local sc=scl[Z.sb[i]]
     tw(sc,{Scale=1.12},.1)
     task.delay(.1,function() tw(sc,{Scale=1},.4,Enum.EasingStyle.Back) end)
   end)
 end
 -- Auto-Play: an = spielt den gewaehlten Slot endlos und startet nach jedem Rejoin/Serverwechsel automatisch (per Auto-Execute)
-on(bRuns.MouseButton1Click,function()
+on(Z.bRuns.MouseButton1Click,function()
   cfg.ap=not cfg.ap
   saveCfg() optTxt()
   if cfg.ap then
@@ -1456,17 +1469,17 @@ on(bRuns.MouseButton1Click,function()
   end
 end)
 local copyTok=0
-on(bCopy.MouseButton1Click,function()
+on(Z.bCopy.MouseButton1Click,function()
   local ok=pcall(function() setclipboard(summary()) end)
   st(ok and "Log copied" or "Copy not possible")
   copyTok+=1
   local my=copyTok
-  bCopy.Text=ok and "Copied!" or "Error"
-  task.delay(1.2,function() if copyTok==my then bCopy.Text="Copy Log" end end)
+  Z.bCopy.Text=ok and "Copied!" or "Error"
+  task.delay(1.2,function() if copyTok==my then Z.bCopy.Text="Copy Log" end end)
 end)
 -- Export: aktuellen Slot als Text in die Zwischenablage (zusaetzlich als Datei ShoxHub/export_slotN.txt)
 local expTok=0
-on(bExp.MouseButton1Click,function()
+on(Z.bExp.MouseButton1Click,function()
   if rec then return st("Stop recording first") end
   if #steps==0 then return st("Slot "..slot.." is empty") end
   local okj,js=pcall(function() return HS:JSONEncode(steps) end)
@@ -1476,13 +1489,13 @@ on(bExp.MouseButton1Click,function()
   st(ok and ("Slot "..slot.." exported (copied)") or "Copy not possible")
   expTok+=1
   local my=expTok
-  bExp.Text=ok and "Copied!" or "Error"
-  task.delay(1.2,function() if expTok==my then bExp.Text="Export Slot" end end)
+  Z.bExp.Text=ok and "Copied!" or "Error"
+  task.delay(1.2,function() if expTok==my then Z.bExp.Text="Export Slot" end end)
 end)
 -- Import: Code aus dem Textfeld (oder Datei ShoxHub/import.txt, wenn das Feld leer ist) in den gewaehlten Slot
-confirm(bImp,"Import Slot",function()
+confirm(Z.bImp,"Import Slot",function()
   if rec or play then return st("Stop first") end
-  local txt=pBox.Text or ""
+  local txt=Z.pBox.Text or ""
   txt=txt:gsub("^%s+",""):gsub("%s+$","")
   if txt=="" then
     local okf,d=pcall(readfile,DIR.."/import.txt")
@@ -1502,38 +1515,38 @@ confirm(bImp,"Import Slot",function()
   if #new==0 then return st("Import failed: invalid code") end
   local okw=pcall(writefile,file(slot),HS:JSONEncode(new))
   if not okw then return st("Import failed: cannot save") end
-  pBox.Text=""
+  Z.pBox.Text=""
   loadSlot(slot)
   st("Slot "..slot.." imported: "..stats())
 end)
 local discTok=0
-on(bDisc.MouseButton1Click,function()
+on(Z.bDisc.MouseButton1Click,function()
   local ok=pcall(function() setclipboard(DISCORD) end)
   st(ok and "Discord link copied" or "Copy not possible")
   discTok+=1
   local my=discTok
-  bDisc.Text=ok and "Copied!" or "Error"
-  task.delay(1.2,function() if discTok==my then bDisc.Text="Copy Discord Link" end end)
+  Z.bDisc.Text=ok and "Copied!" or "Error"
+  task.delay(1.2,function() if discTok==my then Z.bDisc.Text="Copy Discord Link" end end)
 end)
-confirm(bDelCur,"Delete Current",function()
+confirm(Z.bDelCur,"Delete Current",function()
   rec,play,steps=false,false,{}
   gen+=1 runT0=nil waitEnd=false
   st("Current recording discarded") ui()
 end)
-on(nBox.FocusLost,function()
-  local t=nBox.Text:gsub("^%s+",""):gsub("%s+$","")
+on(Z.nBox.FocusLost,function()
+  local t=Z.nBox.Text:gsub("^%s+",""):gsub("%s+$","")
   t=t:sub(1,20)
   cfg.names[tostring(slot)]=(t~="") and t or nil
-  nBox.Text=t
+  Z.nBox.Text=t
   saveCfg()
   st(t~="" and ("Slot "..slot.." named: "..t) or ("Slot "..slot.." name cleared"))
 end)
-confirm(bStR,"Reset Stats",function()
+confirm(Z.bStR,"Reset Stats",function()
   cfg.st={runs=0,time=0,rt=0}
   saveCfg() statsTxt()
   st("Stats reset")
 end)
-confirm(bDelSlot,"Delete Slot",function()
+confirm(Z.bDelSlot,"Delete Slot",function()
   if rec or play then return st("Stop first") end
   pcall(delfile,file(slot))
   steps={} filled[slot]=false
