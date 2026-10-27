@@ -1,4 +1,4 @@
--- Shox Hub | Cameraman TD | v1.4
+-- Shox Hub | Cameraman TD | v1.5
 pcall(function() getgenv().ShoxOff() end)
 local HS,UIS,TS,RS=game:GetService("HttpService"),game:GetService("UserInputService"),game:GetService("TweenService"),game:GetService("RunService")
 local lp=game:GetService("Players").LocalPlayer
@@ -12,7 +12,7 @@ pcall(makefolder,MDIR)
 -- INTRO_URL: GitHub raw (intro.ogg im Repo-Root). INTRO_URL2: Reserve (catbox liefert in Delta teils leere Antworten).
 local K={
   IGNORE={}, -- nie aufnehmen: K.IGNORE["RemoteName"]=true
-  SKIPB={"towerui","slots","jumpbutton"}, -- beim Abspielen ueberspringen
+  SKIPB={"towerui","slots","jumpbutton","gamespeeds"}, -- beim Abspielen ueberspringen
   DEDUP=0.05,
   ADD="TowerAdd",
   USE={TowerUpgrade=true,TowerSell=true},
@@ -1306,8 +1306,8 @@ local function runOnce(my)
             if s.m=="FireServer" then return o:FireServer(table.unpack(a,1,s.n)) end
             return o:InvokeServer(table.unpack(a,1,s.n))
           end)
-          if (not ok) or K.USE[o.Name] then
-            lg({i=idx,n=o.Name,ok=ok,e=(not ok) and tostring(res) or nil,id=K.USE[o.Name] and tostring(type(a[1])=="table" and a[1].Id):sub(1,8) or nil})
+          if (not ok) or K.USE[o.Name] or s.m=="InvokeServer" then
+            lg({i=idx,n=o.Name,ok=ok,e=(not ok) and tostring(res) or nil,r=(ok and s.m=="InvokeServer") and tostring(res):sub(1,40) or nil,id=K.USE[o.Name] and tostring(type(a[1])=="table" and a[1].Id):sub(1,8) or nil})
           end
         elseif firesignal then
           local ok,e=pcall(firesignal,o.Activated)
