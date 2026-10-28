@@ -1,4 +1,4 @@
--- Shox Hub | Cameraman TD | v1.5
+-- Shox Hub | Cameraman TD | v1.6
 pcall(function() getgenv().ShoxOff() end)
 local HS,UIS,TS,RS=game:GetService("HttpService"),game:GetService("UserInputService"),game:GetService("TweenService"),game:GetService("RunService")
 local lp=game:GetService("Players").LocalPlayer
@@ -249,7 +249,8 @@ local function gather()
   end
   return r
 end
-local function newId(before,s)
+-- used (optional, nur beim Abspielen): Ids, die schon einem anderen Tower zugeordnet wurden
+local function newId(before,s,used)
   local uid=tkey(s,"UnitId")
   local pp=tkey(s,"Pos")
   local pos=type(pp)=="table" and pp.v and Vector3.new(table.unpack(pp.v))
@@ -258,7 +259,7 @@ local function newId(before,s)
     task.wait(0.25)
     local c={}
     for g,x in pairs(gather()) do
-      if not before[g] and g~=uid then
+      if not before[g] and g~=uid and not (used and used[g]) then
         local px=pos and pvOf(x)
         c[#c+1]={g=g,d=px and (px-pos).Magnitude}
       end
@@ -1206,6 +1207,8 @@ local function isEnd(s)
 end
 local function runOnce(my)
   idmap={}
+  -- map/used/pend: Platzieren + Id-Zuordnung laufen parallel zum Zeitplan (blockieren ihn nicht mehr)
+  local map,used,pend=idmap,{},0
   local ordl,inOrd,oi={},{},0
   local hasRPA=false
   for _,s in ipairs(steps) do
@@ -1278,29 +1281,51 @@ local function runOnce(my)
     if not o then
       miss+=1
       lg({i=idx,nf=table.concat(s.p,"/")})
-    elseif s.k=="R" and K.USE[o.Name] and not idmap[tkey(s,"Id")] then
-      lg({i=idx,n=o.Name,nomap=tostring(tkey(s,"Id")):sub(1,8)})
     elseif s.k=="R" and o.Name==K.ADD then
-      local a=decArgs(s)
-      local bf=gather()
-      local ok,res=pcall(function()
-        if s.m=="FireServer" then return o:FireServer(table.unpack(a,1,s.n)) end
-        return o:InvokeServer(table.unpack(a,1,s.n))
-      end)
-      local id,n=newId(bf,s)
-      local via
-      if s.tid and id then idmap[s.tid]=id via="tid" end
+      -- Orphan-Zuordnung (Tower ohne eigenes Platzieren im Slot) bleibt in Reihenfolge, daher hier im Hauptlauf
+      local oid
       if not (s.tid and inOrd[s.tid]) then
         oi+=1
-        local oid=orph[oi]
-        if id and oid and not idmap[oid] then
-          idmap[oid]=id via=(via and via.."+" or "").."ord"..oi
-        end
+        oid=orph[oi]
       end
-      lg({i=idx,n=o.Name,ok=ok,e=(not ok) and tostring(res) or nil,neu=n,via=via,got=id and id:sub(1,8)})
+      local myoi=oi
+      pend+=1
+      task.spawn(function()
+        local ok,res,id,n,via=false,nil,nil,0,nil
+        local pok,perr=pcall(function()
+          local a=decArgs(s)
+          local bf=gather()
+          ok,res=pcall(function()
+            if s.m=="FireServer" then return o:FireServer(table.unpack(a,1,s.n)) end
+            return o:InvokeServer(table.unpack(a,1,s.n))
+          end)
+          id,n=newId(bf,s,used)
+        end)
+        if not pok then ok,res=false,perr end
+        if id then
+          used[id]=true
+          if s.tid then map[s.tid]=id via="tid" end
+          if oid and not map[oid] then
+            map[oid]=id via=(via and via.."+" or "").."ord"..myoi
+          end
+        end
+        pend-=1
+        lg({i=idx,n=o.Name,ok=ok,e=(not ok) and tostring(res) or nil,neu=n,via=via,got=id and id:sub(1,8)})
+      end)
     else
       task.spawn(function()
         if s.k=="R" then
+          if K.USE[o.Name] then
+            -- Upgrade/Sell: kurz auf laufende Platzierungen warten, bis die neue Tower-Id zugeordnet ist
+            local uid=tkey(s,"Id")
+            local w0=os.clock()
+            while play and gen==my and not map[uid] and pend>0 and os.clock()-w0<4 do task.wait(0.05) end
+            if not (play and gen==my) then return end
+            if not map[uid] then
+              lg({i=idx,n=o.Name,nomap=tostring(uid):sub(1,8)})
+              return
+            end
+          end
           local a=decArgs(s)
           local ok,res=pcall(function()
             if s.m=="FireServer" then return o:FireServer(table.unpack(a,1,s.n)) end
