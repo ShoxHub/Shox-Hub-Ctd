@@ -1,4 +1,4 @@
--- Shox Hub | Cameraman TD | v1.6
+-- Shox Hub | Cameraman TD | v1.7
 pcall(function() getgenv().ShoxOff() end)
 local HS,UIS,TS,RS=game:GetService("HttpService"),game:GetService("UserInputService"),game:GetService("TweenService"),game:GetService("RunService")
 local lp=game:GetService("Players").LocalPlayer
@@ -1277,6 +1277,7 @@ local function runOnce(my)
     local w=base+s.t-os.clock()
     while w>0 and play and gen==my do task.wait(math.min(w,0.25)) w=base+s.t-os.clock() end
     if not play or gen~=my then return end
+    local late=math.floor((os.clock()-(base+s.t))*100)/100 -- Verspaetung gegenueber dem Zeitplan (nur im Copy Log)
     local o=find(s.p)
     if not o then
       miss+=1
@@ -1292,6 +1293,7 @@ local function runOnce(my)
       pend+=1
       task.spawn(function()
         local ok,res,id,n,via=false,nil,nil,0,nil
+        local f0=os.clock()
         local pok,perr=pcall(function()
           local a=decArgs(s)
           local bf=gather()
@@ -1310,7 +1312,7 @@ local function runOnce(my)
           end
         end
         pend-=1
-        lg({i=idx,n=o.Name,ok=ok,e=(not ok) and tostring(res) or nil,neu=n,via=via,got=id and id:sub(1,8)})
+        lg({i=idx,n=o.Name,ok=ok,e=(not ok) and tostring(res) or nil,neu=n,via=via,got=id and id:sub(1,8),late=late,wt=math.floor((os.clock()-f0)*100)/100})
       end)
     else
       task.spawn(function()
@@ -1322,7 +1324,7 @@ local function runOnce(my)
             while play and gen==my and not map[uid] and pend>0 and os.clock()-w0<4 do task.wait(0.05) end
             if not (play and gen==my) then return end
             if not map[uid] then
-              lg({i=idx,n=o.Name,nomap=tostring(uid):sub(1,8)})
+              lg({i=idx,n=o.Name,nomap=tostring(uid):sub(1,8),late=late})
               return
             end
           end
@@ -1332,7 +1334,7 @@ local function runOnce(my)
             return o:InvokeServer(table.unpack(a,1,s.n))
           end)
           if (not ok) or K.USE[o.Name] or s.m=="InvokeServer" then
-            lg({i=idx,n=o.Name,ok=ok,e=(not ok) and tostring(res) or nil,r=(ok and s.m=="InvokeServer") and tostring(res):sub(1,40) or nil,id=K.USE[o.Name] and tostring(type(a[1])=="table" and a[1].Id):sub(1,8) or nil})
+            lg({i=idx,n=o.Name,ok=ok,e=(not ok) and tostring(res) or nil,r=(ok and s.m=="InvokeServer") and tostring(res):sub(1,40) or nil,id=K.USE[o.Name] and tostring(type(a[1])=="table" and a[1].Id):sub(1,8) or nil,late=late})
           end
         elseif firesignal then
           local ok,e=pcall(firesignal,o.Activated)
