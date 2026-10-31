@@ -1,4 +1,4 @@
--- Shox Hub | Cameraman TD | v1.7
+-- Shox Hub | Cameraman TD | v1.8
 pcall(function() getgenv().ShoxOff() end)
 local HS,UIS,TS,RS=game:GetService("HttpService"),game:GetService("UserInputService"),game:GetService("TweenService"),game:GetService("RunService")
 local lp=game:GetService("Players").LocalPlayer
@@ -12,7 +12,7 @@ pcall(makefolder,MDIR)
 -- INTRO_URL: GitHub raw (intro.ogg im Repo-Root). INTRO_URL2: Reserve (catbox liefert in Delta teils leere Antworten).
 local K={
   IGNORE={}, -- nie aufnehmen: K.IGNORE["RemoteName"]=true
-  SKIPB={"towerui","slots","jumpbutton","gamespeeds"}, -- beim Abspielen ueberspringen
+  SKIPB={"towerui","slots","jumpbutton","gamespeeds","autoskip"}, -- beim Abspielen ueberspringen
   DEDUP=0.05,
   ADD="TowerAdd",
   USE={TowerUpgrade=true,TowerSell=true},
@@ -250,25 +250,25 @@ local function gather()
   return r
 end
 -- used (optional, nur beim Abspielen): Ids, die schon einem anderen Tower zugeordnet wurden
-local function newId(before,s,used)
+local function newId(before,s,used,maxTry)
   local uid=tkey(s,"UnitId")
   local pp=tkey(s,"Pos")
   local pos=type(pp)=="table" and pp.v and Vector3.new(table.unpack(pp.v))
   local n=0
-  for i=1,12 do
+  for i=1,maxTry or 12 do
     task.wait(0.25)
     local c={}
     for g,x in pairs(gather()) do
       if not before[g] and g~=uid and not (used and used[g]) then
         local px=pos and pvOf(x)
-        c[#c+1]={g=g,d=px and (px-pos).Magnitude}
+        c[#c+1]={g=g,d=px and (px-pos).Magnitude,top=(x.Name==g)}
       end
     end
     n=#c
     if n>0 then
       local best
       for _,e in ipairs(c) do
-        if e.d and e.d<=K.NEAR and (not best or e.d<best.d) then best=e end
+        if e.d and e.d<=K.NEAR and (not best or (e.top and not best.top) or (e.top==best.top and e.d<best.d)) then best=e end -- gleicher Abstand: der Eintrag, dessen Name die Id ist, gewinnt
       end
       if best then return best.g,n end
       if n==1 and not c[1].d then return c[1].g,n end
@@ -1294,14 +1294,21 @@ local function runOnce(my)
       task.spawn(function()
         local ok,res,id,n,via=false,nil,nil,0,nil
         local f0=os.clock()
+        local tries=0
         local pok,perr=pcall(function()
           local a=decArgs(s)
           local bf=gather()
-          ok,res=pcall(function()
-            if s.m=="FireServer" then return o:FireServer(table.unpack(a,1,s.n)) end
-            return o:InvokeServer(table.unpack(a,1,s.n))
-          end)
-          id,n=newId(bf,s,used)
+          while true do
+            tries+=1
+            ok,res=pcall(function()
+              if s.m=="FireServer" then return o:FireServer(table.unpack(a,1,s.n)) end
+              return o:InvokeServer(table.unpack(a,1,s.n))
+            end)
+            id,n=newId(bf,s,used)
+            if id or tries>=6 or not (play and gen==my) then break end
+            id,n=newId(bf,s,used,1) -- kurz nachpruefen, damit ein spaeter Tower nicht doppelt gesetzt wird
+            if id then break end
+          end
         end)
         if not pok then ok,res=false,perr end
         if id then
@@ -1312,7 +1319,7 @@ local function runOnce(my)
           end
         end
         pend-=1
-        lg({i=idx,n=o.Name,ok=ok,e=(not ok) and tostring(res) or nil,neu=n,via=via,got=id and id:sub(1,8),late=late,wt=math.floor((os.clock()-f0)*100)/100})
+        lg({i=idx,n=o.Name,ok=ok,e=(not ok) and tostring(res) or nil,neu=n,via=via,got=id and id:sub(1,8),late=late,wt=math.floor((os.clock()-f0)*100)/100,tr=tries})
       end)
     else
       task.spawn(function()
@@ -1321,7 +1328,7 @@ local function runOnce(my)
             -- Upgrade/Sell: kurz auf laufende Platzierungen warten, bis die neue Tower-Id zugeordnet ist
             local uid=tkey(s,"Id")
             local w0=os.clock()
-            while play and gen==my and not map[uid] and pend>0 and os.clock()-w0<4 do task.wait(0.05) end
+            while play and gen==my and not map[uid] and pend>0 and os.clock()-w0<25 do task.wait(0.05) end
             if not (play and gen==my) then return end
             if not map[uid] then
               lg({i=idx,n=o.Name,nomap=tostring(uid):sub(1,8),late=late})
