@@ -1,4 +1,4 @@
--- Shox Hub | Cameraman TD | v1.8
+-- Shox Hub | Cameraman TD | v1.9
 pcall(function() getgenv().ShoxOff() end)
 local HS,UIS,TS,RS=game:GetService("HttpService"),game:GetService("UserInputService"),game:GetService("TweenService"),game:GetService("RunService")
 local lp=game:GetService("Players").LocalPlayer
@@ -12,7 +12,7 @@ pcall(makefolder,MDIR)
 -- INTRO_URL: GitHub raw (intro.ogg im Repo-Root). INTRO_URL2: Reserve (catbox liefert in Delta teils leere Antworten).
 local K={
   IGNORE={}, -- nie aufnehmen: K.IGNORE["RemoteName"]=true
-  SKIPB={"towerui","slots","jumpbutton","gamespeeds","autoskip"}, -- beim Abspielen ueberspringen
+  SKIPB={"towerui","slots","jumpbutton"}, -- beim Abspielen ueberspringen
   DEDUP=0.05,
   ADD="TowerAdd",
   USE={TowerUpgrade=true,TowerSell=true},
@@ -130,7 +130,9 @@ local function path(i)
 end
 local function find(p)
   local o=game
-  for _,n in ipairs(p) do
+  for pi,n0 in ipairs(p) do
+    local n=n0
+    if pi==2 and p[1]=="Players" then n=lp.Name end -- Pfade von anderen Spielern (Export/Import) auf den eigenen Namen umbiegen
     if not o then return nil end
     local name,k=n:match("^(.*)\1(%d+)$")
     if name then
@@ -237,7 +239,20 @@ end
 local function gather()
   local r={}
   local g=workspace:FindFirstChild("Game")
-  local root=(g and g:FindFirstChild("Towers")) or workspace
+  local tf=g and g:FindFirstChild("Towers")
+  if tf then -- Tower-Ids sind die Namen der direkten Kinder: kein Durchsuchen aller Unterteile mehr
+    for _,x in ipairs(tf:GetChildren()) do
+      local n=x.Name
+      if n:match(K.GP) then r[n]=x end
+      if x:IsA("Model") then
+        for _,v in pairs(x:GetAttributes()) do
+          if type(v)=="string" and v:match(K.GP) then r[v]=r[v] or x end
+        end
+      end
+    end
+    return r
+  end
+  local root=workspace
   for _,x in ipairs(root:GetDescendants()) do
     local n=x.Name
     if n:match(K.GP) then r[n]=x end
@@ -1173,6 +1188,32 @@ end)
 
 -- Abspielen
 local function lg(e) if #rlog<300 then rlog[#rlog+1]=e end end
+local function binfo(o) -- nur fuers Copy Log: Zustand eines Buttons (Text/Farben)
+  local t={}
+  local function one(x)
+    local e=x.Name..":"..x.ClassName
+    pcall(function()
+      if x:IsA("TextLabel") or x:IsA("TextButton") then e=e.." t='"..x.Text.."'" end
+      if x:IsA("GuiObject") then
+        local c=x.BackgroundColor3
+        e=e..string.format(" bg=%d,%d,%d v=%s",math.floor(c.R*255),math.floor(c.G*255),math.floor(c.B*255),tostring(x.Visible))
+      end
+      if x:IsA("ImageLabel") or x:IsA("ImageButton") then
+        local c=x.ImageColor3
+        e=e..string.format(" im=%d,%d,%d",math.floor(c.R*255),math.floor(c.G*255),math.floor(c.B*255))
+      end
+    end)
+    t[#t+1]=e
+  end
+  one(o)
+  local n=0
+  for _,x in ipairs(o:GetDescendants()) do
+    n+=1
+    if n>6 then break end
+    one(x)
+  end
+  return table.concat(t," | ")
+end
 local function skipB(s)
   local nm=(table.concat(s.p,"."):gsub("\1","#")..tostring(s.m)):lower()
   for _,w in ipairs(K.SKIPB) do if nm:find(w,1,true) then return true end end
@@ -1305,7 +1346,7 @@ local function runOnce(my)
               return o:InvokeServer(table.unpack(a,1,s.n))
             end)
             id,n=newId(bf,s,used)
-            if id or tries>=6 or not (play and gen==my) then break end
+            if id or tries>=10 or not (play and gen==my) then break end
             id,n=newId(bf,s,used,1) -- kurz nachpruefen, damit ein spaeter Tower nicht doppelt gesetzt wird
             if id then break end
           end
@@ -1328,7 +1369,7 @@ local function runOnce(my)
             -- Upgrade/Sell: kurz auf laufende Platzierungen warten, bis die neue Tower-Id zugeordnet ist
             local uid=tkey(s,"Id")
             local w0=os.clock()
-            while play and gen==my and not map[uid] and pend>0 and os.clock()-w0<25 do task.wait(0.05) end
+            while play and gen==my and not map[uid] and pend>0 and os.clock()-w0<45 do task.wait(0.05) end
             if not (play and gen==my) then return end
             if not map[uid] then
               lg({i=idx,n=o.Name,nomap=tostring(uid):sub(1,8),late=late})
@@ -1344,8 +1385,14 @@ local function runOnce(my)
             lg({i=idx,n=o.Name,ok=ok,e=(not ok) and tostring(res) or nil,r=(ok and s.m=="InvokeServer") and tostring(res):sub(1,40) or nil,id=K.USE[o.Name] and tostring(type(a[1])=="table" and a[1].Id):sub(1,8) or nil,late=late})
           end
         elseif firesignal then
+          local isAS=table.concat(s.p,"."):lower():find("autoskip",1,true)
+          if isAS then pcall(function() lg({i=idx,as0=binfo(o.Parent or o):sub(1,190)}) end) end
           local ok,e=pcall(firesignal,o.Activated)
           if not ok then lg({i=idx,b=o.Name,ok=ok,e=tostring(e)}) end
+          if isAS then
+            task.wait(0.7)
+            pcall(function() lg({i=idx,as1=binfo(o.Parent or o):sub(1,190)}) end)
+          end
         end
       end)
     end
