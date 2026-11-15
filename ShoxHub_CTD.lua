@@ -1,10 +1,10 @@
--- Shox Hub | Cameraman TD + Toilet TD + Smart Learn | v2.2
+-- Shox Hub | Cameraman TD + Toilet TD + Smart Learn | v2.3
 pcall(function() getgenv().ShoxOff() end)
 local HS,UIS,TS,RS=game:GetService("HttpService"),game:GetService("UserInputService"),game:GetService("TweenService"),game:GetService("RunService")
 local lp=game:GetService("Players").LocalPlayer
 local G=getgenv()
 local DIR="ShoxHub"
-local GAME={sub="MACRO SUITE",foot="Macro Suite  |  v2.2"} -- wird nach dem Start anhand des Spielnamens gesetzt (nur Anzeige)
+local GAME={sub="MACRO SUITE",foot="Macro Suite  |  v2.3"} -- wird nach dem Start anhand des Spielnamens gesetzt (nur Anzeige)
 local MDIR=DIR.."/music" -- Intro-Datei (.mp3/.ogg) hier oder direkt in ShoxHub/ ablegen
 pcall(makefolder,DIR)
 pcall(makefolder,MDIR)
@@ -29,7 +29,7 @@ do
   if ok and type(j)=="table" then for k,v in pairs(j) do cfg[k]=v end end
   cfg.gap,cfg.moves,cfg.vol=nil,nil,nil
   cfg.theme=({Schwarz="Black",["Weiß"]="White"})[cfg.theme] or cfg.theme
-  if cfg.ver~=22 then cfg.ver=22 cfg.theme="Turkey" end -- v2.2: Turkey wird einmalig als Standard gesetzt
+  if cfg.ver~=22 then cfg.ver=22 cfg.theme="Turkey" end -- v2.3: Turkey wird einmalig als Standard gesetzt
   if not RUNS[cfg.runs] then cfg.runs=1 end
   if not SCALES[cfg.scale] then cfg.scale=2 end
   if not TRANS[cfg.trans] then cfg.trans=1 end
@@ -349,13 +349,54 @@ function K.uidOf(s)
     if r then return r end
   end
 end
+-- Eindeutige Tower-Ids: gleiche Namen (z.B. mehrmals "GingerbreadHouse") bekommen je eine eigene Seriennummer
+K.SER=setmetatable({},{__mode="k"})
+K.SN=0
+function K.sid(x)
+  local v=K.SER[x]
+  if not v then K.SN+=1 v="T"..K.SN K.SER[x]=v end
+  return v
+end
+-- nur echte Ids (GUID oder Seriennummer) duerfen Argumente ersetzen, sonst wuerde z.B. der Einheitenname "GingerbreadHouse" im Platzier-Aufruf ersetzt
+function K.okId(x) return type(x)=="string" and (x:match(K.GP)~=nil or x:match("^T%d+$")~=nil) end
+-- Aktions-Code eines Aufrufs (erster String in den Argumenten): ein Remote (z.B. DataRemote) kann mehrere Aktionen tragen
+function K.code(s)
+  local function f(o,d)
+    if type(o)=="string" then return o end
+    if type(o)=="table" and o.t=="T" and d<5 and type(o.v)=="table" then
+      for _,kv in ipairs(o.v) do
+        local r=f(kv[2],d+1)
+        if r then return r end
+      end
+    end
+  end
+  for i=1,s.n do
+    local r=f(s.a[i],1)
+    if r then return r end
+  end
+end
+function K.hasInst(s)
+  local function f(o,d)
+    if type(o)=="table" and o.t=="I" then return true end
+    if type(o)=="table" and o.t=="T" and d<5 and type(o.v)=="table" then
+      for _,kv in ipairs(o.v) do if f(kv[2],d+1) then return true end end
+    end
+  end
+  for i=1,s.n do if f(s.a[i],1) then return true end end
+  return false
+end
+-- Art eines Schritts pro Aufruf (nicht pro Remote-Name): add = Platzieren, use = Upgrade/Sell
+function K.kind(name,s)
+  if K.ADDS[name] and (not K.LRN.add[name] or K.posOf(s)) then return "add" end
+  if K.USE[name] and (not K.LRN.use[name] or K.hasInst(s) or K.uidOf(s)) then return "use" end
+end
 local function gather()
   local r={}
   do -- gelernter Container (Smart Learn): jedes direkte Kind ist ein Tower, der Name ist die Id
     local tc=K.TC and find(K.TC)
     if tc then
       for _,x in ipairs(tc:GetChildren()) do
-        r[x.Name]=x
+        r[K.sid(x)]=x
         if x:IsA("Model") then
           for _,v in pairs(x:GetAttributes()) do
             if type(v)=="string" and v:match(K.GP) then r[v]=r[v] or x end
@@ -649,7 +690,7 @@ task.spawn(function()
     end
     if tag then
       GAME.sub=tag.."  ·  MACRO SUITE"
-      GAME.foot=short.."  |  v2.2"
+      GAME.foot=short.."  |  v2.3"
       pcall(function() if alive then Z.footL.Text=GAME.foot end end)
     end
   end)
@@ -1054,7 +1095,7 @@ local function findIntro()
   end
 end
 
--- Beat-Intro v2.2: Zeitplan in Sekunden ab Songstart (abgestimmt auf die 5,06-s-Intro-Datei)
+-- Beat-Intro v2.3: Zeitplan in Sekunden ab Songstart (abgestimmt auf die 5,06-s-Intro-Datei)
 -- {Zeit, Staerke, Art}: a = SHOX knallt rein, b = HUB knallt rein, drop = Drop, end = Finale
 -- Neu: Glanz-Text, Glut-Funken, Vignette, Glitch-Balken, Boot-Overlay mit Ladebalken, Schockwellen, Blitz-Flash beim Drop
 local LET={"S","H","O","X","H","U","B"}
@@ -1087,17 +1128,6 @@ local function introFx(snd)
   end
   local line=mk("Frame",{AnchorPoint=Vector2.new(.5,.5),Position=UDim2.new(.5,0,.5,52),Size=UDim2.fromOffset(0,4),BackgroundColor3=T.acc,BorderSizePixel=0},stage)
   local sub=mk("TextLabel",{AnchorPoint=Vector2.new(.5,.5),Position=UDim2.new(.5,0,.5,80),Size=UDim2.fromOffset(376,22),BackgroundTransparency=1,Text=GAME.sub,Font=Enum.Font.GothamBold,TextSize=15,TextColor3=T.sub,TextTransparency=1,TextTruncate=Enum.TextTruncate.AtEnd},stage)
-  -- Vignette (dunkle Raender)
-  local vig={}
-  local function edge(pos,size,rot)
-    local e=mk("Frame",{Position=pos,Size=size,BackgroundColor3=C(0,0,0),BackgroundTransparency=0,BorderSizePixel=0,ZIndex=3},ig)
-    mk("UIGradient",{Rotation=rot,Transparency=NumberSequence.new({NumberSequenceKeypoint.new(0,0.25),NumberSequenceKeypoint.new(1,1)})},e)
-    vig[#vig+1]=e
-  end
-  edge(UDim2.fromScale(0,0),UDim2.fromScale(1,0.35),90)
-  edge(UDim2.fromScale(0,0.65),UDim2.fromScale(1,0.35),270)
-  edge(UDim2.fromScale(0,0),UDim2.fromScale(0.25,1),0)
-  edge(UDim2.fromScale(0.75,0),UDim2.fromScale(0.25,1),180)
   -- Boot-Overlay oben + Ladebalken unten
   local tag=mk("TextLabel",{AnchorPoint=Vector2.new(.5,.5),Position=UDim2.new(.5,0,.1,0),Size=UDim2.fromOffset(360,20),BackgroundTransparency=1,Text="",Font=Enum.Font.Code,TextSize=14,TextColor3=T.acc,TextTransparency=1,ZIndex=6},ig)
   local barBg=mk("Frame",{AnchorPoint=Vector2.new(.5,.5),Position=UDim2.new(.5,0,.9,0),Size=UDim2.fromOffset(260,5),BackgroundColor3=T.btn,BackgroundTransparency=1,BorderSizePixel=0,ZIndex=6},ig)
@@ -1137,7 +1167,8 @@ local function introFx(snd)
   local function glitch(n)
     for _=1,n do
       local h=math.random(3,28)
-      local gb=mk("Frame",{Position=UDim2.new(math.random()*0.3-0.15,0,math.random(),0),Size=UDim2.new(math.random(40,100)/100,0,0,h),BackgroundColor3=PAL[math.random(1,3)],BackgroundTransparency=0.45+math.random()*0.3,BorderSizePixel=0,ZIndex=4},ig)
+      local gw=math.random(20,55)/100
+      local gb=mk("Frame",{Position=UDim2.new(0.06+math.random()*(0.88-gw),0,0.06+math.random()*0.88,0),Size=UDim2.new(gw,0,0,h),BackgroundColor3=PAL[math.random(1,3)],BackgroundTransparency=0.45+math.random()*0.3,BorderSizePixel=0,ZIndex=4},ig)
       task.delay(0.05+math.random()*0.09,function() gb:Destroy() end)
     end
   end
@@ -1202,7 +1233,6 @@ local function introFx(snd)
     bg.BackgroundTransparency=f
     glow.BackgroundTransparency=math.max(0.93-pulse*0.9-flashA*0.4,0)*(1-f)+f
     glow.Size=UDim2.fromOffset((620+pulse*500)*base,(620+pulse*500)*base)
-    for _,e in ipairs(vig) do e.BackgroundTransparency=f end
     local swp=(tl*0.85)%2.4-1.2 -- Glanzstreifen: laeuft von links nach rechts ueber das Wort
     for i,e in ipairs(L) do
       local age=tl-e.hit
@@ -1249,27 +1279,31 @@ local function introFx(snd)
     barFill.Size=UDim2.fromScale(prog,1)
     pct.Text=string.format("%d%%",math.floor(prog*100))
     pct.TextTransparency=math.max(ba,f)
-    -- Glut-Funken steigen auf (alle Themes)
+    -- Glut-Funken und Blaetter fliegen aus dem Logo heraus (nicht vom Bildschirmrand)
     emT-=dt
     if emT<=0 and tl<FADE0 then
-      emT=0.035
-      local ex=math.random()
+      emT=0.03
       local es=math.random(3,7)
-      local em=mk("Frame",{AnchorPoint=Vector2.new(.5,.5),Position=UDim2.new(ex,0,1.03,0),Size=UDim2.fromOffset(es,es),BackgroundColor3=PAL[math.random(1,2)],BorderSizePixel=0,Rotation=math.random(0,90)},lay)
+      local sx=L[math.random(1,#L)].x
+      local ang=-math.pi/2+(math.random()-.5)*1.7
+      local dist=90+math.random()*170
+      local em=mk("Frame",{AnchorPoint=Vector2.new(.5,.5),Position=UDim2.new(.5,sx,.5,-10),Size=UDim2.fromOffset(es,es),BackgroundColor3=PAL[math.random(1,2)],BorderSizePixel=0,Rotation=math.random(0,90),ZIndex=0},stage)
       mk("UICorner",{CornerRadius=UDim.new(1,0)},em)
-      local ed=1.4+math.random()*1.8
-      tw(em,{Position=UDim2.new(ex+(math.random()-.5)*0.25,0,math.random()*0.3-0.05,0),BackgroundTransparency=1,Size=UDim2.fromOffset(1,1)},ed,Enum.EasingStyle.Sine)
+      local ed=0.8+math.random()*0.9
+      tw(em,{Position=UDim2.new(.5,sx+math.cos(ang)*dist,.5,-10+math.sin(ang)*dist),BackgroundTransparency=1,Size=UDim2.fromOffset(1,1)},ed,Enum.EasingStyle.Sine)
       task.delay(ed+0.1,function() em:Destroy() end)
     end
-    if themeName=="Turkey" and tl<FADE0 then -- Herbstblaetter fallen durchs Bild
+    if themeName=="Turkey" and tl<FADE0 then
       leafT-=dt
       if leafT<=0 then
-        leafT=0.07
-        local lx=math.random()
-        local lf=mk("Frame",{AnchorPoint=Vector2.new(.5,.5),Position=UDim2.new(lx,0,0,-20),Size=UDim2.fromOffset(math.random(8,14),math.random(5,8)),Rotation=math.random(0,360),BackgroundColor3=LEAF[math.random(1,#LEAF)],BorderSizePixel=0},lay)
+        leafT=0.09
+        local a2=math.random()*math.pi*2
+        local dd=150+math.random()*190
+        local sx=L[math.random(1,#L)].x
+        local lf=mk("Frame",{AnchorPoint=Vector2.new(.5,.5),Position=UDim2.new(.5,sx,.5,-10),Size=UDim2.fromOffset(math.random(8,14),math.random(5,8)),Rotation=math.random(0,360),BackgroundColor3=LEAF[math.random(1,#LEAF)],BorderSizePixel=0,ZIndex=0},stage)
         mk("UICorner",{CornerRadius=UDim.new(1,0)},lf)
-        local dur=1.6+math.random()*1.4
-        tw(lf,{Position=UDim2.new(lx+(math.random()-.5)*0.2,0,1,30),Rotation=lf.Rotation+math.random(-300,300)},dur,Enum.EasingStyle.Sine)
+        local dur=1.0+math.random()*0.9
+        tw(lf,{Position=UDim2.new(.5,sx+math.cos(a2)*dd,.5,-10+math.sin(a2)*dd+70),Rotation=lf.Rotation+math.random(-360,360),BackgroundTransparency=1},dur,Enum.EasingStyle.Sine)
         task.delay(dur+0.1,function() lf:Destroy() end)
       end
     end
@@ -1401,8 +1435,9 @@ function K.argHit(v,d,ids)
 end
 function K.learn(s,remote,a)
   local nm=remote.Name
-  K.TRY[nm]=(K.TRY[nm] or 0)+1
-  if K.TRY[nm]>6 then return end
+  local tk=nm..":"..tostring(K.code(s) or "")
+  K.TRY[tk]=(K.TRY[tk] or 0)+1
+  if K.TRY[tk]>6 then return end
   local pos=K.posOf(s)
   if pos then
     local added,set={},{}
@@ -1451,12 +1486,13 @@ G.ShoxH=function(self,m,...)
   task.spawn(pcall,function()
     if typeof(self)=="Instance" and not K.IGNORE[self.Name] then
       local s=add(tt,"R",path(self),m,a)
-      if s and K.ADDS[self.Name] then
+      local kd=s and K.kind(self.Name,s)
+      if s and kd=="add" then
         local bf=gather()
         local id,n=newId(bf,s)
         if id then s.tid=id st("Tower-Id "..id:sub(1,8).." ("..n..")")
         else st("Tower-Id: none ("..n..")") end
-      elseif s and K.USE[self.Name] then
+      elseif s and kd=="use" then
         if not idloc then
           idloc=true
           s.loc=locate(K.uidOf(s))
@@ -1625,7 +1661,7 @@ local function runOnce(my)
   K.TIDS=tset
   for _,s in ipairs(steps) do
     if s.k=="R" then
-      if K.USE[(s.p[#s.p]:gsub("\1%d+$",""))] then
+      if K.kind((s.p[#s.p]:gsub("\1%d+$","")),s)=="use" then
         local id=K.uidOf(s)
         if type(id)=="string" and not inOrd[id] then inOrd[id]=true ordl[#ordl+1]=id end
       end
@@ -1710,7 +1746,7 @@ local function runOnce(my)
     if not o then
       miss+=1
       lg({i=idx,nf=table.concat(s.p,"/")})
-    elseif s.k=="R" and K.ADDS[o.Name] then
+    elseif s.k=="R" and K.kind(o.Name,s)=="add" then
       -- Orphan-Zuordnung (Tower ohne eigenes Platzieren im Slot) bleibt in Reihenfolge, daher hier im Hauptlauf
       local oid
       if not (s.tid and inOrd[s.tid]) then
@@ -1741,8 +1777,8 @@ local function runOnce(my)
         if not pok then ok,res=false,perr end
         if id then
           used[id]=true
-          if s.tid then map[s.tid]=id via="tid" end
-          if oid and not map[oid] then
+          if s.tid and K.okId(s.tid) then map[s.tid]=id via="tid" end
+          if oid and K.okId(oid) and not map[oid] then
             map[oid]=id via=(via and via.."+" or "").."ord"..myoi
           end
         end
@@ -1752,7 +1788,7 @@ local function runOnce(my)
     else
       task.spawn(function()
         if s.k=="R" then
-          if K.USE[o.Name] then
+          if K.kind(o.Name,s)=="use" then
             -- Upgrade/Sell: kurz auf laufende Platzierungen warten, bis die neue Tower-Id zugeordnet ist
             local uid=K.uidOf(s)
             local w0=os.clock()
