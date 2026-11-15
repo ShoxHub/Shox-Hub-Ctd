@@ -1,15 +1,14 @@
--- Shox Hub | Cameraman TD + Toilet TD + Smart Learn | v2.1
+-- Shox Hub | Cameraman TD + Toilet TD + Smart Learn | v2.2
 pcall(function() getgenv().ShoxOff() end)
 local HS,UIS,TS,RS=game:GetService("HttpService"),game:GetService("UserInputService"),game:GetService("TweenService"),game:GetService("RunService")
 local lp=game:GetService("Players").LocalPlayer
 local G=getgenv()
 local DIR="ShoxHub"
-local GAME={sub="MACRO SUITE",foot="Macro Suite  |  v2.1"} -- wird nach dem Start anhand des Spielnamens gesetzt (nur Anzeige)
+local GAME={sub="MACRO SUITE",foot="Macro Suite  |  v2.2"} -- wird nach dem Start anhand des Spielnamens gesetzt (nur Anzeige)
 local MDIR=DIR.."/music" -- Intro-Datei (.mp3/.ogg) hier oder direkt in ShoxHub/ ablegen
 pcall(makefolder,DIR)
 pcall(makefolder,MDIR)
 -- Intro-Song wird beim ersten Start automatisch geladen und in ShoxHub/music/ gespeichert (nur einmal, danach lokal).
--- INTRO_URL: GitHub raw (intro.ogg im Repo-Root). INTRO_URL2: Reserve (catbox liefert in Delta teils leere Antworten).
 local K={
   IGNORE={}, -- nie aufnehmen: K.IGNORE["RemoteName"]=true
   SKIPB={"towerui","slots","jumpbutton"}, -- beim Abspielen ueberspringen
@@ -24,12 +23,13 @@ local K={
   TC=nil -- gelernter Tower-Container (Pfad), wenn die Tower-Ids keine GUIDs sind
 }
 local RUNS,SCALES,SNAME,TRANS={0},{0.85,1,1.2},{"S","M","L"},{0,0.2,0.4} -- RUNS={0}: immer Endless
-local cfg={theme="Black",runs=1,scale=2,trans=1,intro=true,lag=false,slot=1,ap=false,dev=false,smart=true,names={},st={runs=0,time=0,rt=0}}
+local cfg={ver=0,theme="Turkey",runs=1,scale=2,trans=1,intro=true,lag=false,slot=1,ap=false,dev=false,smart=true,names={},st={runs=0,time=0,rt=0}}
 do
   local ok,j=pcall(function() return HS:JSONDecode(readfile(DIR.."/settings.json")) end)
   if ok and type(j)=="table" then for k,v in pairs(j) do cfg[k]=v end end
   cfg.gap,cfg.moves,cfg.vol=nil,nil,nil
   cfg.theme=({Schwarz="Black",["Weiß"]="White"})[cfg.theme] or cfg.theme
+  if cfg.ver~=22 then cfg.ver=22 cfg.theme="Turkey" end -- v2.2: Turkey wird einmalig als Standard gesetzt
   if not RUNS[cfg.runs] then cfg.runs=1 end
   if not SCALES[cfg.scale] then cfg.scale=2 end
   if not TRANS[cfg.trans] then cfg.trans=1 end
@@ -114,11 +114,11 @@ local function nudge()
     local h=ch and ch:FindFirstChildOfClass("Humanoid")
     local r=ch and ch:FindFirstChild("HumanoidRootPart")
     if h and r and h.Health>0 and not h.SeatPart then
-      -- Move()/Jump werden vom Roblox-ControlModule jeden Frame ueberschrieben -> echter Sprung ueber State + kleiner Schritt per CFrame (Server sieht eine echte Positionsaenderung)
+      -- Move()/Jump werden vom Roblox-ControlModule jeden Frame ueberschrieben -> echter Sprung ueber State + kleiner Schritt per CFrame
       pcall(function() h:ChangeState(Enum.HumanoidStateType.Jumping) end)
       r.CFrame=r.CFrame*CFrame.new(0.8,0,0)
       task.wait(0.15)
-      if r.Parent then r.CFrame=r.CFrame*CFrame.new(-0.8,0,0) end -- relativ zurueck: kein Rubberband, falls sich der Charakter inzwischen bewegt hat
+      if r.Parent then r.CFrame=r.CFrame*CFrame.new(-0.8,0,0) end -- relativ zurueck: kein Rubberband
     end
   end)
 end
@@ -380,7 +380,7 @@ local function gather()
     return r
   end
   local nowc=os.clock()
-  if K.gc and nowc-K.gct<0.2 then -- Vollscan nur alle 0.2 s (sonst scannt jede wartende Platzierung die ganze Map -> Ruckler/Disconnect)
+  if K.gc and nowc-K.gct<0.2 then -- Vollscan nur alle 0.2 s
     local c={}
     for k,v in pairs(K.gc) do c[k]=v end
     return c
@@ -419,7 +419,7 @@ local function newId(before,s,used,maxTry)
     if n>0 then
       local best
       for _,e in ipairs(c) do
-        if e.d and e.d<=K.NEAR and (not best or (e.top and not best.top) or (e.top==best.top and e.d<best.d)) then best=e end -- gleicher Abstand: der Eintrag, dessen Name die Id ist, gewinnt
+        if e.d and e.d<=K.NEAR and (not best or (e.top and not best.top) or (e.top==best.top and e.d<best.d)) then best=e end
       end
       if best then return best.g,n end
       if n==1 and not c[1].d then return c[1].g,n end
@@ -440,23 +440,21 @@ local function locate(id)
   return #r>0 and table.concat(r," | ") or "nicht im Workspace"
 end
 
--- Themes: Schwarz, Weiss, Frost, Natural, Lava
+-- Themes: Black, White, Frost, Natural, Lava, Turkey, Gold (kein Lila, kein Pink)
 local function C(r,g,b) return Color3.fromRGB(r,g,b) end
 local W=C(255,255,255)
 local THEMES={
+  {"Turkey",{bg=C(26,13,6),btn=C(68,36,15),btxt=C(255,236,204),acc=C(240,136,30),sub=C(214,166,112),rec=C(158,64,16),play=C(184,102,22),del=C(98,44,18),ctxt=W,ron=C(240,112,24),pon=C(255,196,64),onT=C(30,14,0)}},
   {"Black",{bg=C(8,8,8),btn=C(26,26,28),btxt=C(235,235,235),acc=C(255,255,255),sub=C(125,125,130),rec=C(38,38,40),play=C(38,38,40),del=C(26,26,28),ctxt=C(245,245,245),ron=C(255,255,255),pon=C(255,255,255),onT=C(0,0,0)}},
   {"White",{bg=C(250,250,252),btn=C(233,233,237),btxt=C(22,22,24),acc=C(10,10,12),sub=C(115,115,122),rec=C(214,214,220),play=C(214,214,220),del=C(233,233,237),ctxt=C(22,22,24),ron=C(10,10,12),pon=C(10,10,12),onT=C(255,255,255)}},
   {"Frost",{bg=C(10,22,40),btn=C(24,48,80),btxt=C(225,242,255),acc=C(120,200,255),sub=C(170,205,235),rec=C(50,100,160),play=C(60,130,200),del=C(40,70,110),ctxt=W,ron=C(30,140,230),pon=C(30,160,190),onT=W}},
   {"Natural",{bg=C(10,24,14),btn=C(24,52,30),btxt=C(225,245,225),acc=C(90,200,90),sub=C(170,210,170),rec=C(120,80,35),play=C(50,140,70),del=C(90,50,30),ctxt=W,ron=C(200,80,40),pon=C(120,190,60),onT=W}},
   {"Lava",{bg=C(20,8,6),btn=C(52,22,14),btxt=C(255,225,200),acc=C(255,100,20),sub=C(255,190,150),rec=C(150,30,10),play=C(190,65,10),del=C(105,25,15),ctxt=W,ron=C(255,50,20),pon=C(230,140,0),onT=W}},
-  {"Neon",{bg=C(10,6,20),btn=C(30,16,52),btxt=C(240,225,255),acc=C(255,60,200),sub=C(190,150,230),rec=C(140,20,120),play=C(30,120,150),del=C(60,25,70),ctxt=W,ron=C(255,40,180),pon=C(0,200,210),onT=W}},
-  {"Royal",{bg=C(14,10,26),btn=C(36,26,66),btxt=C(235,228,255),acc=C(170,130,255),sub=C(170,160,210),rec=C(90,50,160),play=C(60,90,170),del=C(50,36,90),ctxt=W,ron=C(150,90,255),pon=C(90,150,255),onT=W}},
-  {"Turkey",{bg=C(28,15,8),btn=C(66,36,16),btxt=C(255,234,200),acc=C(232,128,32),sub=C(206,160,108),rec=C(150,62,18),play=C(176,98,24),del=C(94,44,20),ctxt=W,ron=C(235,110,30),pon=C(250,190,60),onT=C(30,14,0)}},
   {"Gold",{bg=C(16,13,6),btn=C(44,36,14),btxt=C(255,240,205),acc=C(255,200,60),sub=C(210,185,130),rec=C(140,100,10),play=C(170,130,20),del=C(80,62,16),ctxt=W,ron=C(255,180,0),pon=C(255,215,80),onT=C(20,14,0)}},
 }
 local TM={}
 for _,t in ipairs(THEMES) do TM[t[1]]=t[2] end
-local T,themeName=TM.Black,"Black"
+local T,themeName=TM.Turkey,"Turkey"
 local themed={}
 
 -- GUI
@@ -473,6 +471,12 @@ F.Btxt=function(t) return t.btxt end
 F.Del=function(t) return t.del end
 F.Ctxt=function(t) return t.ctxt end
 F.Line=function(t) return t.btn:Lerp(t.acc,0.3) end
+-- Glanz-Verlauf: Grundfarbe -> fast Weiss -> Grundfarbe (wandert ueber Text, die Textfarbe selbst ist Weiss)
+local function shineSeq(t)
+  local a=t.acc
+  local hi=a:Lerp(W,0.88)
+  return ColorSequence.new({ColorSequenceKeypoint.new(0,a),ColorSequenceKeypoint.new(0.38,a),ColorSequenceKeypoint.new(0.5,hi),ColorSequenceKeypoint.new(0.62,a),ColorSequenceKeypoint.new(1,a)})
+end
 -- GUI-Container: zufaelliger Name, in gethui()/CoreGui wenn moeglich (nicht im PlayerGui sichtbar)
 local function guiParent()
   local ok,h=pcall(function() return gethui and gethui() end)
@@ -487,28 +491,28 @@ local WIN_H=300
 local DEFPOS=UDim2.new(0,10,0.08,0)
 local main=mk("Frame",{Size=UDim2.fromOffset(220,0),Position=DEFPOS,ClipsDescendants=true,BorderSizePixel=0,BackgroundTransparency=1},gui)
 reg(main,"BackgroundColor3",F.Bg)
+mk("UIGradient",{Rotation=90,Color=ColorSequence.new(C(255,255,255),C(185,185,185))},main) -- leichter Tiefen-Verlauf im Hintergrund
 local uis=mk("UIScale",{Scale=SCALES[cfg.scale]},main)
 mk("UICorner",{CornerRadius=UDim.new(0,14)},main)
 -- Rahmen mit rotierendem Farbverlauf
-Z.mStroke=mk("UIStroke",{Thickness=2,Color=W},main)
+Z.mStroke=mk("UIStroke",{Thickness=2.5,Color=W},main)
 local mGrad=mk("UIGradient",{Rotation=0},Z.mStroke)
 if type(cfg.pos)=="table" and #cfg.pos==4 then
   pcall(function() main.Position=UDim2.new(cfg.pos[1],cfg.pos[2],cfg.pos[3],cfg.pos[4]) end)
 end
 Z.hdr=mk("Frame",{Size=UDim2.new(1,-76,0,34),BackgroundTransparency=1},main)
-local title=mk("TextLabel",{Position=UDim2.fromOffset(12,0),Size=UDim2.new(1,-12,1,0),Text="Shox Hub",TextXAlignment=Enum.TextXAlignment.Left,BackgroundTransparency=1,Font=Enum.Font.GothamBlack,TextSize=17},Z.hdr)
-reg(title,"TextColor3",F.Acc)
--- Glanz-Effekt ueber dem Titel (Titel bleibt immer gut lesbar) + weiches Leuchten
-Z.titleG=mk("UIGradient",{Transparency=NumberSequence.new({NumberSequenceKeypoint.new(0,0.25),NumberSequenceKeypoint.new(0.5,0),NumberSequenceKeypoint.new(1,0.25)})},title)
-Z.titleS=mk("UIStroke",{Thickness=1.2,Transparency=0.85},title)
+-- Titel: Textfarbe Weiss, der Verlauf (Shiny Text) faerbt ihn ein und ein Glanzstreifen wandert drueber
+local title=mk("TextLabel",{Position=UDim2.fromOffset(12,0),Size=UDim2.fromOffset(104,34),Text="Shox Hub",TextColor3=W,TextXAlignment=Enum.TextXAlignment.Left,BackgroundTransparency=1,Font=Enum.Font.GothamBlack,TextSize=18},Z.hdr)
+Z.titleG=mk("UIGradient",{Color=shineSeq(T)},title)
+Z.titleS=mk("UIStroke",{Thickness=1.4,Transparency=0.8},title)
 reg(Z.titleS,"Color",F.Acc)
 local status=mk("TextLabel",{Position=UDim2.fromOffset(12,34),Size=UDim2.new(1,-24,0,18),Text="Ready | Anti-AFK on",TextXAlignment=Enum.TextXAlignment.Left,BackgroundTransparency=1,Font=Enum.Font.Gotham,TextSize=11,TextTruncate=Enum.TextTruncate.AtEnd},main)
 reg(status,"TextColor3",F.Sub)
 Z.dragH=mk("TextButton",{Size=UDim2.new(1,-76,0,56),BackgroundTransparency=1,Text="",AutoButtonColor=false,Active=true,ZIndex=2},main)
-local div=mk("Frame",{Position=UDim2.fromOffset(12,56),Size=UDim2.new(1,-24,0,1),BorderSizePixel=0},main)
+local div=mk("Frame",{Position=UDim2.fromOffset(12,56),Size=UDim2.new(1,-24,0,2),BorderSizePixel=0},main)
 reg(div,"BackgroundColor3",F.Acc)
 -- wandernder Lichtstreifen auf der Trennlinie
-Z.divG=mk("UIGradient",{Transparency=NumberSequence.new({NumberSequenceKeypoint.new(0,1),NumberSequenceKeypoint.new(0.5,0.1),NumberSequenceKeypoint.new(1,1)})},div)
+Z.divG=mk("UIGradient",{Transparency=NumberSequence.new({NumberSequenceKeypoint.new(0,1),NumberSequenceKeypoint.new(0.5,0),NumberSequenceKeypoint.new(1,1)})},div)
 local body=mk("ScrollingFrame",{Position=UDim2.fromOffset(0,60),Size=UDim2.new(1,0,1,-60),BackgroundTransparency=1,BorderSizePixel=0,ScrollBarThickness=3,CanvasSize=UDim2.new(),AutomaticCanvasSize=Enum.AutomaticSize.Y,ScrollingDirection=Enum.ScrollingDirection.Y},main)
 reg(body,"ScrollBarImageColor3",F.Acc)
 mk("UIListLayout",{Padding=UDim.new(0,6),SortOrder=Enum.SortOrder.LayoutOrder},body)
@@ -541,6 +545,7 @@ local function btn(par,txt,i,n,bgf,txf,ts)
   mk("UICorner",{CornerRadius=UDim.new(0,9)},b)
   mk("UITextSizeConstraint",{MaxTextSize=ts or 13,MinTextSize=8},b)
   mk("UIPadding",{PaddingLeft=UDim.new(0,4),PaddingRight=UDim.new(0,4)},b)
+  mk("UIGradient",{Rotation=90,Color=ColorSequence.new(W,C(205,205,205))},b) -- leichter Glanz von oben nach unten
   local sc=mk("UIScale",{Scale=1},b)
   local sk=mk("UIStroke",{Thickness=1,Transparency=0.55,ApplyStrokeMode=Enum.ApplyStrokeMode.Border},b)
   reg(sk,"Color",F.Line)
@@ -624,7 +629,6 @@ reg(Z.footL,"TextColor3",F.Sub)
 Z.foot2=row(14)
 reg(mk("TextLabel",{Size=UDim2.new(1,0,1,0),BackgroundTransparency=1,Text="Shox Hub | Anti-AFK on",TextXAlignment=Enum.TextXAlignment.Left,Font=Enum.Font.Gotham,TextSize=10},Z.foot2),"TextColor3",F.Sub)
 -- Spielerkennung (nur Anzeige: Footer, Intro, Copy Log). Aendert keine Remotes und kein Verhalten.
--- Bekannte Spiele bekommen ihren Namen fest, jedes andere Spiel wird aus dem echten Spielnamen gebaut (Klammern/Emojis raus, Grossbuchstaben).
 task.spawn(function()
   pcall(function()
     local ok,i=pcall(function() return game:GetService("MarketplaceService"):GetProductInfo(game.PlaceId) end)
@@ -645,7 +649,7 @@ task.spawn(function()
     end
     if tag then
       GAME.sub=tag.."  ·  MACRO SUITE"
-      GAME.foot=short.."  |  v2.1"
+      GAME.foot=short.."  |  v2.2"
       pcall(function() if alive then Z.footL.Text=GAME.foot end end)
     end
   end)
@@ -776,7 +780,7 @@ if type(cfg.mpos)=="table" and #cfg.mpos==4 then
 end
 mk("UICorner",{CornerRadius=UDim.new(0,10)},mbtn)
 reg(mbtn,"BackgroundColor3",F.Bg)
-Z.mbS=mk("UIStroke",{Thickness=2,Color=W,ApplyStrokeMode=Enum.ApplyStrokeMode.Border},mbtn)
+Z.mbS=mk("UIStroke",{Thickness=2.5,Color=W,ApplyStrokeMode=Enum.ApplyStrokeMode.Border},mbtn)
 local mbGrad=mk("UIGradient",{Rotation=0},Z.mbS)
 local mbSc=mk("UIScale",{Scale=1},mbtn)
 for n=0,2 do
@@ -890,6 +894,7 @@ applyTheme=function(name,quick)
   cfg.theme=name
   mGrad.Color=ColorSequence.new({ColorSequenceKeypoint.new(0,T.acc),ColorSequenceKeypoint.new(0.5,T.acc:Lerp(T.bg,0.75)),ColorSequenceKeypoint.new(1,T.acc)})
   mbGrad.Color=mGrad.Color
+  Z.titleG.Color=shineSeq(T)
   for _,e in ipairs(themed) do
     local v=e[3](T)
     if quick then e[1][e[2]]=v else tw(e[1],{[e[2]]=v},.4) end
@@ -906,9 +911,8 @@ on(Z.bTheme.MouseButton1Click,function() setDD(not ddOpen) end)
 
 local alRun,alRestore
 -- Anti-Lag (FPS-Boost, vollstaendig rueckgaengig machbar)
--- Aus: Partikel/Trails/Beams/Feuer/Rauch, Post-Effekte (Bloom, Blur, SunRays, DoF, ColorCorrection), Schatten (global + pro Part), Reflexionen, Terrain-Deko/Wellen.
--- Ruckelfrei: Aenderungen laufen in einer Warteschlange mit festem Zeitbudget pro Frame (max. ca. 2 ms), nie alles auf einmal.
--- Keine Materialwechsel und keine Qualitaetsstufe mehr (das hat das Spiel haengen lassen).
+-- Aus: Partikel/Trails/Beams/Feuer/Rauch, Post-Effekte, Schatten (global + pro Part), Reflexionen, Terrain-Deko/Wellen.
+-- Ruckelfrei: Aenderungen laufen in einer Warteschlange mit festem Zeitbudget pro Frame (max. ca. 2 ms).
 do
 local LS=game:GetService("Lighting")
 local AL={on=false,orig=setmetatable({},{__mode="k"}),q={},qi=1,conn=nil,hb=nil,env=nil,rest={},ri=1}
@@ -1050,8 +1054,9 @@ local function findIntro()
   end
 end
 
--- Beat-Intro: Zeitplan in Sekunden ab Songstart (abgestimmt auf die 5,06-s-Intro-Datei)
+-- Beat-Intro v2.2: Zeitplan in Sekunden ab Songstart (abgestimmt auf die 5,06-s-Intro-Datei)
 -- {Zeit, Staerke, Art}: a = SHOX knallt rein, b = HUB knallt rein, drop = Drop, end = Finale
+-- Neu: Glanz-Text, Glut-Funken, Vignette, Glitch-Balken, Boot-Overlay mit Ladebalken, Schockwellen, Blitz-Flash beim Drop
 local LET={"S","H","O","X","H","U","B"}
 local BEATS={{0.05,1,"a"},{0.52,1,"b"},{0.84,0.6},{1.28,0.9},{1.58,0.5},{1.88,0.9},{2.11,0.6},{2.48,2.2,"drop"},{3.15,1},{3.74,1},{4.34,1.2},{4.75,1.7,"end"}}
 local FADE0,FADE1=4.95,5.5
@@ -1062,30 +1067,44 @@ local function introFx(snd)
   local vp=workspace.CurrentCamera.ViewportSize
   local base=math.clamp(math.min(vp.X*0.6/376,vp.Y*0.4/80),0.5,3)
   local bg=mk("Frame",{Size=UDim2.fromScale(1,1),BackgroundColor3=T.bg,BorderSizePixel=0},ig)
-  local lay=mk("Frame",{Size=UDim2.fromScale(1,1),BackgroundTransparency=1,BorderSizePixel=0,ClipsDescendants=true},ig) -- Ebene fuer fallende Blaetter (Turkey-Theme), liegt hinter dem Logo
+  mk("UIGradient",{Rotation=90,Color=ColorSequence.new(T.bg:Lerp(T.acc,0.2),T.bg)},bg)
+  -- grosses pulsierendes Leuchten hinter dem Logo
+  local glow=mk("Frame",{AnchorPoint=Vector2.new(.5,.5),Position=UDim2.fromScale(.5,.5),Size=UDim2.fromOffset(620*base,620*base),BackgroundColor3=T.acc,BackgroundTransparency=0.92,BorderSizePixel=0},ig)
+  mk("UICorner",{CornerRadius=UDim.new(1,0)},glow)
+  local lay=mk("Frame",{Size=UDim2.fromScale(1,1),BackgroundTransparency=1,BorderSizePixel=0,ClipsDescendants=true},ig) -- Ebene fuer Glut/Blaetter, liegt hinter dem Logo
   local stage=mk("Frame",{AnchorPoint=Vector2.new(.5,.5),Position=UDim2.fromScale(.5,.5),Size=UDim2.fromScale(1,1),BackgroundTransparency=1,BorderSizePixel=0},ig)
   local sc=mk("UIScale",{Scale=base},stage)
   local L={}
+  local shine=shineSeq(T)
   for i,ch in ipairs(LET) do
     local x=-163+(i-1)*50+(i>=5 and 26 or 0)
     local w=mk("Frame",{AnchorPoint=Vector2.new(.5,.5),Position=UDim2.new(.5,x,.5,-10),Size=UDim2.fromOffset(50,80),BackgroundTransparency=1,BorderSizePixel=0},stage)
     local us=mk("UIScale",{Scale=1},w)
-    local lb=mk("TextLabel",{Size=UDim2.fromScale(1,1),BackgroundTransparency=1,Text=ch,Font=Enum.Font.GothamBlack,TextSize=76,TextColor3=T.acc,TextTransparency=1},w)
+    local lb=mk("TextLabel",{Size=UDim2.fromScale(1,1),BackgroundTransparency=1,Text=ch,Font=Enum.Font.GothamBlack,TextSize=76,TextColor3=W,TextTransparency=1},w)
+    local lg=mk("UIGradient",{Color=shine},lb) -- Shiny Text: Glanzstreifen laeuft ueber alle Buchstaben
     local lsk=mk("UIStroke",{Thickness=1,Color=T.acc,Transparency=1},lb) -- Glow, flackert bei jedem Beat auf
-    L[i]={w=w,us=us,lb=lb,sk=lsk,x=x,hit=-10,amp=0,rev=math.huge}
+    L[i]={w=w,us=us,lb=lb,lg=lg,sk=lsk,x=x,hit=-10,amp=0,rev=math.huge}
   end
   local line=mk("Frame",{AnchorPoint=Vector2.new(.5,.5),Position=UDim2.new(.5,0,.5,52),Size=UDim2.fromOffset(0,4),BackgroundColor3=T.acc,BorderSizePixel=0},stage)
   local sub=mk("TextLabel",{AnchorPoint=Vector2.new(.5,.5),Position=UDim2.new(.5,0,.5,80),Size=UDim2.fromOffset(376,22),BackgroundTransparency=1,Text=GAME.sub,Font=Enum.Font.GothamBold,TextSize=15,TextColor3=T.sub,TextTransparency=1,TextTruncate=Enum.TextTruncate.AtEnd},stage)
-  mk("UIGradient",{Rotation=90,Color=ColorSequence.new(T.bg:Lerp(T.acc,0.14),T.bg)},bg)
-  -- Eck-Klammern um das Logo (blenden mit der Linie ein)
-  local br={}
-  for _,c in ipairs({{-1,-1},{1,-1},{-1,1},{1,1}}) do
-    for k=1,2 do
-      local w,h=18,2
-      if k==2 then w,h=2,18 end
-      br[#br+1]=mk("Frame",{AnchorPoint=Vector2.new(c[1]<0 and 0 or 1,c[2]<0 and 0 or 1),Position=UDim2.new(.5,c[1]*200,.5,-10+c[2]*74),Size=UDim2.fromOffset(w,h),BackgroundColor3=T.acc,BackgroundTransparency=1,BorderSizePixel=0},stage)
-    end
+  -- Vignette (dunkle Raender)
+  local vig={}
+  local function edge(pos,size,rot)
+    local e=mk("Frame",{Position=pos,Size=size,BackgroundColor3=C(0,0,0),BackgroundTransparency=0,BorderSizePixel=0,ZIndex=3},ig)
+    mk("UIGradient",{Rotation=rot,Transparency=NumberSequence.new({NumberSequenceKeypoint.new(0,0.25),NumberSequenceKeypoint.new(1,1)})},e)
+    vig[#vig+1]=e
   end
+  edge(UDim2.fromScale(0,0),UDim2.fromScale(1,0.35),90)
+  edge(UDim2.fromScale(0,0.65),UDim2.fromScale(1,0.35),270)
+  edge(UDim2.fromScale(0,0),UDim2.fromScale(0.25,1),0)
+  edge(UDim2.fromScale(0.75,0),UDim2.fromScale(0.25,1),180)
+  -- Boot-Overlay oben + Ladebalken unten
+  local tag=mk("TextLabel",{AnchorPoint=Vector2.new(.5,.5),Position=UDim2.new(.5,0,.1,0),Size=UDim2.fromOffset(360,20),BackgroundTransparency=1,Text="",Font=Enum.Font.Code,TextSize=14,TextColor3=T.acc,TextTransparency=1,ZIndex=6},ig)
+  local barBg=mk("Frame",{AnchorPoint=Vector2.new(.5,.5),Position=UDim2.new(.5,0,.9,0),Size=UDim2.fromOffset(260,5),BackgroundColor3=T.btn,BackgroundTransparency=1,BorderSizePixel=0,ZIndex=6},ig)
+  mk("UICorner",{CornerRadius=UDim.new(1,0)},barBg)
+  local barFill=mk("Frame",{Size=UDim2.fromScale(0,1),BackgroundColor3=T.acc,BackgroundTransparency=1,BorderSizePixel=0,ZIndex=7},barBg)
+  mk("UICorner",{CornerRadius=UDim.new(1,0)},barFill)
+  local pct=mk("TextLabel",{AnchorPoint=Vector2.new(.5,.5),Position=UDim2.new(.5,0,.9,16),Size=UDim2.fromOffset(260,16),BackgroundTransparency=1,Text="",Font=Enum.Font.Code,TextSize=12,TextColor3=T.sub,TextTransparency=1,ZIndex=6},ig)
   local fl=mk("Frame",{Size=UDim2.fromScale(1,1),BackgroundColor3=T.acc,BackgroundTransparency=1,BorderSizePixel=0,ZIndex=5},ig)
   -- Skip-Button oben rechts (Theme-Look wie die Buttons im Hub)
   local skip=mk("TextButton",{AnchorPoint=Vector2.new(1,0),Position=UDim2.new(1,-14,0,14),Size=UDim2.fromOffset(78,32),BackgroundColor3=T.btn,Text="Skip",TextColor3=T.btxt,Font=Enum.Font.GothamBold,TextSize=14,AutoButtonColor=false,BorderSizePixel=0,ZIndex=10},ig)
@@ -1094,26 +1113,36 @@ local function introFx(snd)
   local skU=mk("UIScale",{Scale=1},skip)
   on(skip.InputBegan,function(x) if isIn(x) then tw(skU,{Scale=0.93},.08) end end)
   on(skip.InputEnded,function(x) if isIn(x) then tw(skU,{Scale=1},.3,Enum.EasingStyle.Back) end end)
+  local PAL={T.acc,T.pon,W,T.acc:Lerp(W,0.5)}
   local function spark(n,wide)
     for _=1,n do
       local a=math.random()*math.pi*2
-      local d=(wide and 260 or 130)*(0.4+math.random()*0.8)
+      local d=(wide and 300 or 140)*(0.4+math.random()*0.8)
       local sx=L[math.random(1,#L)].x
-      local p=mk("Frame",{AnchorPoint=Vector2.new(.5,.5),Position=UDim2.new(.5,sx,.5,-10),Size=UDim2.fromOffset(6,6),Rotation=math.random(0,90),BackgroundColor3=T.acc,BorderSizePixel=0},stage)
-      tw(p,{Position=UDim2.new(.5,sx+math.cos(a)*d,.5,-10+math.sin(a)*d),BackgroundTransparency=1,Size=UDim2.fromOffset(2,2)},0.55)
-      task.delay(0.6,function() p:Destroy() end)
+      local sz=math.random(4,9)
+      local p=mk("Frame",{AnchorPoint=Vector2.new(.5,.5),Position=UDim2.new(.5,sx,.5,-10),Size=UDim2.fromOffset(sz,sz),Rotation=math.random(0,90),BackgroundColor3=PAL[math.random(1,#PAL)],BorderSizePixel=0},stage)
+      tw(p,{Position=UDim2.new(.5,sx+math.cos(a)*d,.5,-10+math.sin(a)*d),BackgroundTransparency=1,Size=UDim2.fromOffset(2,2),Rotation=p.Rotation+math.random(-200,200)},0.6)
+      task.delay(0.65,function() p:Destroy() end)
     end
   end
-  local function ring(th)
+  local function ring(th,col)
     local r=mk("Frame",{AnchorPoint=Vector2.new(.5,.5),Position=UDim2.new(.5,0,.5,-10),Size=UDim2.fromOffset(40,40),BackgroundTransparency=1,BorderSizePixel=0},stage)
     mk("UICorner",{CornerRadius=UDim.new(1,0)},r)
-    local sk=mk("UIStroke",{Thickness=th,Color=T.acc},r)
-    tw(r,{Size=UDim2.fromOffset(820,820)},0.7)
+    local sk=mk("UIStroke",{Thickness=th,Color=col or T.acc},r)
+    tw(r,{Size=UDim2.fromOffset(900,900)},0.7)
     tw(sk,{Transparency=1},0.7)
     task.delay(0.8,function() r:Destroy() end)
   end
+  -- Glitch: kurze waagerechte Balken blitzen quer ueber den Bildschirm
+  local function glitch(n)
+    for _=1,n do
+      local h=math.random(3,28)
+      local gb=mk("Frame",{Position=UDim2.new(math.random()*0.3-0.15,0,math.random(),0),Size=UDim2.new(math.random(40,100)/100,0,0,h),BackgroundColor3=PAL[math.random(1,3)],BackgroundTransparency=0.45+math.random()*0.3,BorderSizePixel=0,ZIndex=4},ig)
+      task.delay(0.05+math.random()*0.09,function() gb:Destroy() end)
+    end
+  end
   local tl,bi,pulse,shake,flashA,ul,subA=0,1,0,0,0,0,0
-  local leafT=0
+  local leafT,emT,tagT=0,0,0
   local LEAF={C(214,90,20),C(240,170,40),C(150,60,20),C(190,120,30)}
   local done,hb=false,nil
   local function finish(stop)
@@ -1131,10 +1160,11 @@ local function introFx(snd)
   local function fire(b)
     local s,kind=b[2],b[3]
     pulse=math.max(pulse,0.05+0.06*s)
-    shake=math.max(shake,6*s)
-    flashA=math.max(flashA,math.min(0.1*s,0.35))
+    shake=math.max(shake,7*s)
+    flashA=math.max(flashA,math.min(0.12*s,0.4))
+    fl.BackgroundColor3=T.acc
     local a,z,amp=1,#L,0.3*s
-    if kind=="a" then a,z,amp=1,4,1.6 elseif kind=="b" then a,z,amp=5,7,1.6 end
+    if kind=="a" then a,z,amp=1,4,1.7 elseif kind=="b" then a,z,amp=5,7,1.7 end
     for i=a,z do
       local e=L[i]
       e.hit=tl+(i-a)*0.035
@@ -1142,14 +1172,20 @@ local function introFx(snd)
       if amp>1 then e.rev=e.hit end
     end
     if kind=="drop" then
-      pulse=0.35 shake=26 flashA=0.75
-      ring(6) task.delay(0.12,function() ring(3) end)
-      spark(24,true)
+      -- Schock-Moment: Weiss-Blitz, Zoom-Punch, starkes Zittern, Glitch-Gewitter, doppelte Schockwelle
+      pulse=0.6 shake=40 flashA=1
+      fl.BackgroundColor3=W
+      ring(7) task.delay(0.1,function() ring(4,W) end) task.delay(0.22,function() ring(2) end)
+      spark(36,true)
+      glitch(14)
+      for k=1,4 do task.delay(k*0.06,function() if not done then glitch(5) end end) end
     elseif kind=="end" then
-      pulse=0.3 shake=20 flashA=0.6
-      ring(5) spark(18,true)
+      pulse=0.38 shake=24 flashA=0.8
+      ring(5) ring(2,W) spark(26,true)
+      glitch(7)
     else
-      spark(math.floor(4*s)+2,false)
+      spark(math.floor(5*s)+2,false)
+      if s>=0.9 and math.random()<0.6 then glitch(2) end
     end
   end
   hb=on(RS.Heartbeat,function(dt)
@@ -1164,6 +1200,10 @@ local function introFx(snd)
     sc.Scale=base*(1+pulse)*(1+f*0.5)
     fl.BackgroundTransparency=1-flashA
     bg.BackgroundTransparency=f
+    glow.BackgroundTransparency=math.max(0.93-pulse*0.9-flashA*0.4,0)*(1-f)+f
+    glow.Size=UDim2.fromOffset((620+pulse*500)*base,(620+pulse*500)*base)
+    for _,e in ipairs(vig) do e.BackgroundTransparency=f end
+    local swp=(tl*0.85)%2.4-1.2 -- Glanzstreifen: laeuft von links nach rechts ueber das Wort
     for i,e in ipairs(L) do
       local age=tl-e.hit
       e.lb.TextTransparency=(tl>=e.rev) and f or 1
@@ -1172,13 +1212,13 @@ local function introFx(snd)
       e.w.Rotation=age>=0 and math.sin(age*10)*7*d*(i%2==0 and 1 or -1) or 0
       e.us.Scale=1+(age>=0 and e.amp*math.exp(-age*8) or 0)
       local gl=(age>=0 and tl>=e.rev) and math.exp(-age*6) or 0
-      e.sk.Thickness=1+gl*3
-      e.sk.Transparency=1-0.85*gl*(1-e.lb.TextTransparency)
+      e.sk.Thickness=1+gl*3.5
+      e.sk.Transparency=1-0.9*gl*(1-e.lb.TextTransparency)
+      e.lg.Offset=Vector2.new(math.clamp(swp-(i-1)*0.16+gl*0.6,-1,1),0)
     end
     if tl>=0.84 then ul=math.min(1,ul+dt*3.5) end
     line.Size=UDim2.fromOffset(376*ul,4)
     line.BackgroundTransparency=f
-    for _,p in ipairs(br) do p.BackgroundTransparency=math.max(1-ul,f) end
     if tl>=3.15 then
       subA=math.min(1,subA+dt*5)
       if sub.Text~=GAME.sub then sub.Text=GAME.sub end
@@ -1187,6 +1227,40 @@ local function introFx(snd)
     skip.BackgroundTransparency=f
     skip.TextTransparency=f
     skS.Transparency=math.max(0.55,f)
+    -- Boot-Overlay: Text wechselt mit dem Song, flackert, beim Drop "ACCESS GRANTED"
+    tagT-=dt
+    if tagT<=0 then
+      tagT=0.06
+      local txt
+      if tl<0.8 then txt="BOOTING SHOX CORE"
+      elseif tl<1.7 then txt="LOADING MODULES"
+      elseif tl<2.48 then txt="INJECTING PAYLOAD"
+      elseif tl<3.6 then txt="ACCESS GRANTED"
+      else txt="WELCOME BACK" end
+      tag.Text=txt
+      tag.TextColor3=(tl>=2.48 and tl<3.6) and T.pon or T.acc
+      local fk=(tl<2.48 and math.random()<0.25) and 0.55 or 0.05
+      tag.TextTransparency=math.max(1-math.min(tl*6,1)+fk*(tl<0.4 and 0 or 1),f)
+    end
+    local prog=math.clamp(tl/(FADE0-0.1),0,1)
+    local ba=math.max(1-math.min(tl*6,1),f)
+    barBg.BackgroundTransparency=math.max(ba,0.35*0+ (ba<1 and 0.35 or 1))
+    barFill.BackgroundTransparency=ba
+    barFill.Size=UDim2.fromScale(prog,1)
+    pct.Text=string.format("%d%%",math.floor(prog*100))
+    pct.TextTransparency=math.max(ba,f)
+    -- Glut-Funken steigen auf (alle Themes)
+    emT-=dt
+    if emT<=0 and tl<FADE0 then
+      emT=0.035
+      local ex=math.random()
+      local es=math.random(3,7)
+      local em=mk("Frame",{AnchorPoint=Vector2.new(.5,.5),Position=UDim2.new(ex,0,1.03,0),Size=UDim2.fromOffset(es,es),BackgroundColor3=PAL[math.random(1,2)],BorderSizePixel=0,Rotation=math.random(0,90)},lay)
+      mk("UICorner",{CornerRadius=UDim.new(1,0)},em)
+      local ed=1.4+math.random()*1.8
+      tw(em,{Position=UDim2.new(ex+(math.random()-.5)*0.25,0,math.random()*0.3-0.05,0),BackgroundTransparency=1,Size=UDim2.fromOffset(1,1)},ed,Enum.EasingStyle.Sine)
+      task.delay(ed+0.1,function() em:Destroy() end)
+    end
     if themeName=="Turkey" and tl<FADE0 then -- Herbstblaetter fallen durchs Bild
       leafT-=dt
       if leafT<=0 then
@@ -1430,7 +1504,7 @@ local function hookBtn(b)
     local c1=b.Activated:Connect(function()
       if rec then add(os.clock()-t0,"B",path(b),b:IsA("TextButton") and b.Text or "",{n=0}) end
     end)
-    -- Verbindung wird getrennt, sobald der Button aus dem PlayerGui verschwindet (sonst waechst die Liste bei Auto-Play ueber Stunden endlos)
+    -- Verbindung wird getrennt, sobald der Button aus dem PlayerGui verschwindet
     local c2=b.AncestryChanged:Connect(function()
       if not b:IsDescendantOf(pg) then unhookBtn(b) end
     end)
@@ -1449,10 +1523,10 @@ on(RS.Heartbeat,function(dt)
   rot=(rot+dt*((rec or play) and 140 or 50))%360
   mGrad.Rotation=rot
   mbGrad.Rotation=rot
-  Z.titleG.Offset=Vector2.new((c*0.5)%2-1,0)
+  Z.titleG.Offset=Vector2.new((c*0.7)%2.6-1.3,0) -- Shiny Text: Glanzstreifen wandert ueber den Titel
   Z.divG.Offset=Vector2.new((c*0.4)%2-1,0)
   local a=(math.sin(c*5)+1)/2
-  Z.titleS.Transparency=0.6+0.35*((math.sin(c*2)+1)/2)
+  Z.titleS.Transparency=0.55+0.35*((math.sin(c*2)+1)/2)
   for _,p in ipairs(pulsers) do
     local sk=skm[p[1]]
     if p[2]() then
@@ -1752,7 +1826,7 @@ local function summary()
     put("Learned: add="..(#la>0 and table.concat(la,",") or "-").." use="..(#lu>0 and table.concat(lu,",") or "-").." tc="..(K.TC and pstr(K.TC) or "-").." smart="..tostring(cfg.smart))
     if K.WARN then put(K.WARN) end
   end
-  do -- welche Remotes wurden in diesem Slot aufgenommen (damit andere Spiele wie Toilet TD ohne Raten eingebaut werden koennen)
+  do -- welche Remotes wurden in diesem Slot aufgenommen
     local rc,ro={},{}
     for _,s in ipairs(steps) do
       if s.k=="R" then
@@ -1970,7 +2044,7 @@ end)
 confirm(Z.bDelCur,"Delete Current",function()
   rec,play=false,false
   gen+=1 runT0=nil waitEnd=false
-  loadSlot(slot) -- Speicher wieder mit der gespeicherten Slot-Datei abgleichen (sonst "Slot has no actions", obwohl der Slot belegt ist)
+  loadSlot(slot) -- Speicher wieder mit der gespeicherten Slot-Datei abgleichen
   st("Current recording discarded") ui()
 end)
 on(Z.nBox.FocusLost,function()
@@ -1998,7 +2072,7 @@ for n=1,5 do
   local ok,r=pcall(isfile,file(n))
   filled[n]=ok and r==true
 end
-applyTheme(TM[cfg.theme] and cfg.theme or "Black",true)
+applyTheme(TM[cfg.theme] and cfg.theme or "Turkey",true)
 showCopy()
 tw(main,{Size=UDim2.fromOffset(220,WIN_H),BackgroundTransparency=TRANS[cfg.trans]},.7,Enum.EasingStyle.Back)
 task.delay(0.9,clampMain)
